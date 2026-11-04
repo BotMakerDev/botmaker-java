@@ -19,6 +19,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   `SourceSet` and a `LibraryIndex`, `ImportManager`, `EditContext`, `BlockId`, `InitializerFactory` and the handlers
   and helpers that need nothing of Studio, moved from `botmaker-studio@cea8a957`. `EnumManipulationHandler.addEnumToClass`
   takes the name and the constants rather than Studio's `EnumDraft`.
+- The bot's index and the edits over it (2026-11-04), moved from `botmaker-studio@e0081238`: `parse.BotParser`;
+  `index.BotIndex`, `ValueTypeResolver` and `ApiDocsParser`; `index.nav` (`Usages`, `Refactor`, `TypeRename`,
+  `TypeDelete`, `TextSearch`); `edit.guard` (`CompileGuard`, `UnusedImports`); `edit.refactor` (`MethodReferences`,
+  `ReviewMarks`); `edit.palette`, the palette's block and expression kinds, `ApiDocs` and `TypeNames`; and
+  `edit.factories.ExpressionFactory`. `BotIndex` is built over a `SourceSet` or a map of sources; the open project's
+  index is its holder's to build.
 
 ### Fixed
 
