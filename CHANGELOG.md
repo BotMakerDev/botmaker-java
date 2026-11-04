@@ -13,4 +13,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   (`com.botmaker.plugin.host.grammar` is now `com.botmaker.java.grammar`), with their history at
   `botmaker-plugin-host@df71893`. `JavaLayersTest` keeps it free of UI and hosts, with one parser.
 - `com.botmaker.java.parse.SourceSet` (2026-11-04): the read-only view of a project's sources, its files, their text
-  and trees, its classpath and source root.
+  and trees, its classpath and source root. `parsedUnit` parses and keeps a file's tree, `ownerOf` and `freshValue` give
+  what the bound libraries claim of a name and seed for a type.
+- `com.botmaker.java.types`, `index` and `edit` (2026-11-04): Studio's resolved types, `ProjectAnalyzer` over a
+  `SourceSet` and a `LibraryIndex`, `ImportManager`, `EditContext`, `BlockId`, `InitializerFactory` and the handlers
+  and helpers that need nothing of Studio, moved from `botmaker-studio@cea8a957`. `EnumManipulationHandler.addEnumToClass`
+  takes the name and the constants rather than Studio's `EnumDraft`.
+
+### Fixed
+
+- A default value for a type no project source declares keeps its package and generics (2026-11-04): a
+  `Consumer<MatchResult>` slot was enriched to the name `MatchResult>` and its seed threw.

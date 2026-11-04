@@ -30,9 +30,34 @@ public interface SourceSet {
     /** The root of the bot's sources; {@code null} when it has none on disk. */
     Path sourceRoot();
 
+    /**
+     * The tree of {@code file}, parsed with bindings when the holder has none yet. A holder that keeps trees
+     * keeps this one too, so a second ask parses nothing. By default it is {@link #unit}: no parse.
+     */
+    default Optional<CompilationUnit> parsedUnit(Path file) {
+        return unit(file);
+    }
+
     /** A parser that resolves bindings against this bot's classpath and sources. */
     default ASTParser boundParser() {
         return SourceParser.bound(classpath(), sourceRoot());
+    }
+
+    /**
+     * The qualified name that a library bound to the bot claims for {@code simpleName}, if any. An import asks
+     * for it after the bot's own sources and before the JDK, so a library's {@code Point} wins over
+     * {@code java.awt.Point}. Empty by default.
+     */
+    default Optional<String> ownerOf(String simpleName) {
+        return Optional.empty();
+    }
+
+    /**
+     * The source of a fresh value that a library bound to the bot declares for the type {@code canonicalName},
+     * if any. A new slot of that type is filled with it. Empty by default.
+     */
+    default Optional<String> freshValue(String canonicalName) {
+        return Optional.empty();
     }
 
     /** The class a source file is named for: {@code Movement} for {@code Movement.java}. */
