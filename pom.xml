@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+      groupId is com.github.BotMakerDev for the same reason as every other published module: JitPack serves
+      this repo as com.github.BotMakerDev:botmaker-java:<tag> whatever this pom says. The version is real:
+      -SNAPSHOT on main, the release version on a tag; only the release moves it (umbrella
+      docs/refactor/43-real-versions.md).
+    -->
+    <groupId>com.github.BotMakerDev</groupId>
+    <artifactId>botmaker-java</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+
+    <name>BotMaker Java</name>
+    <description>
+        Reading and writing a bot's Java: one parser, the value grammar, and JDT trees. A library with no state, no
+        files and no UI, for every module that touches a bot's source, before a compile or during a run.
+    </description>
+
+    <properties>
+        <maven.compiler.release>25</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <junit.version>5.10.2</junit.version>
+        <!-- studio-api's main version; a release commit sets the released one (doc 43). -->
+        <botmaker.studioapi.version>0.14.2-SNAPSHOT</botmaker.studioapi.version>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <!--
+          The contract, at `provided` scope, as in botmaker-plugin-host: a contract class must be one Class object on
+          both sides of the plugin boundary, so this module never supplies a copy. A consumer declares it itself.
+        -->
+        <dependency>
+            <groupId>com.github.BotMakerDev</groupId>
+            <artifactId>botmaker-studio-api</artifactId>
+            <version>${botmaker.studioapi.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Not optional: nothing here works without it, and SourceFormatter's jface Document comes with its
+             org.eclipse.text. A host that must not download JDT declares this module optional. -->
+        <dependency>
+            <groupId>org.eclipse.jdt</groupId>
+            <artifactId>org.eclipse.jdt.core</artifactId>
+            <version>3.47.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Pinned for JitPack: its Maven defaults the compiler plugin to 3.1, which ignores
+                 maven.compiler.release. 3.11.0 because 3.12.0 needs a newer Maven than JitPack's
+                 (botmaker-studio-api/pom.xml has the full account). -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+            </plugin>
+
+            <!-- Bakes ${botmaker.studioapi.version} into the published pom. flattenMode=oss strips the jitpack
+                 repository unless kept. 1.4.1 for JitPack's Maven (botmaker-plugin-toolkit/pom.xml). -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>1.4.1</version>
+                <configuration>
+                    <flattenMode>oss</flattenMode>
+                    <pomElements>
+                        <repositories>keep</repositories>
+                    </pomElements>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten-clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
