@@ -1,5 +1,6 @@
 package com.botmaker.java.grammar;
 
+import com.botmaker.java.parse.JavaLevel;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.ToolFactory;
 import org.eclipse.jdt.core.formatter.CodeFormatter;
@@ -8,7 +9,9 @@ import org.eclipse.jface.text.Document;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.text.edits.TextEdit;
 
+import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Lays out a whole Java source file — the step Studio never had.
@@ -30,8 +33,8 @@ import java.util.Map;
  * of a file where reflowing changes what a reader sees rather than only where they see it.
  *
  * <p>Settings follow the repo's {@code .editorconfig} (4 spaces, 120 columns, LF) so a file Studio writes and
- * a file a human edits in the IDE agree, and compliance comes from {@link SourceParser#latestLevelOptions()}
- * rather than a second copy — the formatter parses too, and one left at JDT's 1.3 default mangles the very
+ * a file a human edits in the IDE agree, and compliance comes from {@link JavaLevel#compilerOptions()}, the
+ * parser's own, rather than a second copy — the formatter parses too, and one left at JDT's 1.3 default mangles the very
  * {@code switch} rules this exists to lay out.
  */
 public final class SourceFormatter {
@@ -47,27 +50,41 @@ public final class SourceFormatter {
     /** Matches {@code .editorconfig}: {@code end_of_line = lf} — and keeps a diff free of line-ending churn. */
     private static final String LINE_SEPARATOR = "\n";
 
-    private static final CodeFormatter FORMATTER = ToolFactory.createCodeFormatter(options());
-
     /**
-     * The same layout for one expression or statement shown on its own — a cell's label, a value's
-     * {@code source()} — which is never wrapped: it has no column to fit and no indentation to continue at.
+     * The three layouts at one level, built once per level: the formatter parses too, at the level it is given.
+     *
+     * @param file     a file's layout
+     * @param snippets the same layout for one expression or statement shown on its own — a cell's label, a value's
+     *                 {@code source()} — which is never wrapped: it has no column to fit and no indentation to
+     *                 continue at
+     * @param chains   the file's layout, with a chain that does not fit wrapped one call per line:
+     *                 {@link #formatValue}
      */
-    private static final CodeFormatter SNIPPETS = ToolFactory.createCodeFormatter(snippetOptions());
+    private record Formatters(CodeFormatter file, CodeFormatter snippets, CodeFormatter chains) {
 
-    /** The file's layout, with a chain that does not fit wrapped one call per line: {@link #formatValue}. */
-    private static final CodeFormatter CHAINS = ToolFactory.createCodeFormatter(chainOptions());
+        static Formatters at(JavaLevel level) {
+            return new Formatters(ToolFactory.createCodeFormatter(options(level)),
+                    ToolFactory.createCodeFormatter(snippetOptions(level)),
+                    ToolFactory.createCodeFormatter(chainOptions(level)));
+        }
+    }
+
+    private static final Map<JavaLevel, Formatters> FORMATTERS = new ConcurrentHashMap<>();
+
+    private static Formatters at(JavaLevel level) {
+        return FORMATTERS.computeIfAbsent(level, Formatters::at);
+    }
 
     /**
      * {@code source} laid out, or {@code source} unchanged when the formatter declines it. Never null for
      * non-null input, and never throws: this sits on the edit path, where failing closed means losing a user's
      * change to a cosmetic pass.
      */
-    public static String format(String source) {
+    public static String format(JavaLevel level, String source) {
         if (source == null || source.isBlank()) return source;
-        if (SourceParser.hasSyntaxErrors(SourceParser.parse(source))) return source;
+        if (SourceParser.hasSyntaxErrors(SourceParser.parse(level, source))) return source;
         try {
-            TextEdit edit = FORMATTER.format(
+            TextEdit edit = at(level).file().format(
                     CodeFormatter.K_COMPILATION_UNIT, source, 0, source.length(), 0, LINE_SEPARATOR);
             if (edit == null) return source;
             IDocument document = new Document(source);
@@ -92,8 +109,8 @@ public final class SourceFormatter {
      * formats a region against the whole tree, so an inserted line still lands at the indentation of the
      * block it sits in.
      */
-    public static String formatChanged(String previous, String source) {
-        return formatChanged(FORMATTER, previous, source);
+    public static String formatChanged(JavaLevel level, String previous, String source) {
+        return formatChanged(level, at(level).file(), previous, source);
     }
 
     /**
@@ -101,14 +118,14 @@ public final class SourceFormatter {
      * it, one that does not is one call per line. A screen map's {@code setup()} grows a call per edit, and JDT's
      * default packs the calls into as few lines as fit, which reads as one wall.
      */
-    public static String formatValue(String previous, String source) {
-        return formatChanged(CHAINS, previous, source);
+    public static String formatValue(JavaLevel level, String previous, String source) {
+        return formatChanged(level, at(level).chains(), previous, source);
     }
 
-    private static String formatChanged(CodeFormatter formatter, String previous, String source) {
+    private static String formatChanged(JavaLevel level, CodeFormatter formatter, String previous, String source) {
         if (source == null || source.isBlank()) return source;
-        if (previous == null) return format(source);
-        if (SourceParser.hasSyntaxErrors(SourceParser.parse(source))) return source;
+        if (previous == null) return format(level, source);
+        if (SourceParser.hasSyntaxErrors(SourceParser.parse(level, source))) return source;
         int prefix = 0;
         int limit = Math.min(previous.length(), source.length());
         while (prefix < limit && previous.charAt(prefix) == source.charAt(prefix)) prefix++;
@@ -140,19 +157,19 @@ public final class SourceFormatter {
      * JDT prints a node it built as. For showing a value the host wrote; the file itself gets the node, which
      * {@code ASTRewrite} lays out on its own. The input unchanged when the formatter declines it.
      */
-    public static String expression(String source) {
-        return snippet(CodeFormatter.K_EXPRESSION, source);
+    public static String expression(JavaLevel level, String source) {
+        return snippet(level, CodeFormatter.K_EXPRESSION, source);
     }
 
     /** {@link #expression} for a statement, {@code Mouse.click(new Point(1, 2));}. */
-    public static String statement(String source) {
-        return snippet(CodeFormatter.K_STATEMENTS, source);
+    public static String statement(JavaLevel level, String source) {
+        return snippet(level, CodeFormatter.K_STATEMENTS, source);
     }
 
-    private static String snippet(int kind, String source) {
+    private static String snippet(JavaLevel level, int kind, String source) {
         if (source == null || source.isBlank()) return source;
         try {
-            TextEdit edit = SNIPPETS.format(kind, source, 0, source.length(), 0, LINE_SEPARATOR);
+            TextEdit edit = at(level).snippets().format(kind, source, 0, source.length(), 0, LINE_SEPARATOR);
             if (edit == null) return source;
             IDocument document = new Document(source);
             edit.apply(document);
@@ -168,30 +185,30 @@ public final class SourceFormatter {
      * tab — into a file that is four spaces everywhere else. Only the indentation is overridden, so nothing else
      * about what a rewrite emits changes.
      */
-    public static Map<String, String> rewriteOptions() {
-        Map<String, String> options = JavaCore.getOptions();
+    public static Map<String, String> rewriteOptions(JavaLevel level) {
+        Map<String, String> options = new HashMap<>(level.compilerOptions());
         options.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, JavaCore.SPACE);
         options.put(DefaultCodeFormatterConstants.FORMATTER_TAB_SIZE, String.valueOf(INDENT));
         options.put(DefaultCodeFormatterConstants.FORMATTER_INDENTATION_SIZE, String.valueOf(INDENT));
         return options;
     }
 
-    private static Map<String, String> snippetOptions() {
-        Map<String, String> options = options();
+    private static Map<String, String> snippetOptions(JavaLevel level) {
+        Map<String, String> options = options(level);
         options.put(DefaultCodeFormatterConstants.FORMATTER_LINE_SPLIT, String.valueOf(Integer.MAX_VALUE / 2));
         return options;
     }
 
-    private static Map<String, String> chainOptions() {
-        Map<String, String> options = options();
+    private static Map<String, String> chainOptions(JavaLevel level) {
+        Map<String, String> options = options(level);
         options.put(DefaultCodeFormatterConstants.FORMATTER_ALIGNMENT_FOR_SELECTOR_IN_METHOD_INVOCATION,
                 DefaultCodeFormatterConstants.createAlignmentValue(false,
                         DefaultCodeFormatterConstants.WRAP_ONE_PER_LINE, DefaultCodeFormatterConstants.INDENT_DEFAULT));
         return options;
     }
 
-    private static Map<String, String> options() {
-        Map<String, String> options = SourceParser.latestLevelOptions();
+    private static Map<String, String> options(JavaLevel level) {
+        Map<String, String> options = new HashMap<>(level.compilerOptions());
         options.put(DefaultCodeFormatterConstants.FORMATTER_TAB_CHAR, JavaCore.SPACE);
         options.put(DefaultCodeFormatterConstants.FORMATTER_TAB_SIZE, String.valueOf(INDENT));
         options.put(DefaultCodeFormatterConstants.FORMATTER_INDENTATION_SIZE, String.valueOf(INDENT));

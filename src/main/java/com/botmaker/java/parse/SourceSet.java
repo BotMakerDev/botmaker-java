@@ -30,6 +30,9 @@ public interface SourceSet {
     /** The root of the bot's sources; {@code null} when it has none on disk. */
     Path sourceRoot();
 
+    /** The Java the bot is written in: its pom's {@code maven.compiler.release}, read by the holder. */
+    JavaLevel level();
+
     /**
      * The tree of {@code file}, parsed with bindings when the holder has none yet. A holder that keeps trees
      * keeps this one too, so a second ask parses nothing. By default it is {@link #unit}: no parse.
@@ -40,7 +43,7 @@ public interface SourceSet {
 
     /** A parser that resolves bindings against this bot's classpath and sources. */
     default ASTParser boundParser() {
-        return SourceParser.bound(classpath(), sourceRoot());
+        return SourceParser.bound(level(), classpath(), sourceRoot());
     }
 
     /**

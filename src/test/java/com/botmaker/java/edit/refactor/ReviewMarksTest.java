@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static com.botmaker.java.parse.JavaLevel.LATEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -38,13 +39,13 @@ class ReviewMarksTest {
 
     /** Applies {@code edit} to the one method named {@code method} in {@code source}, and returns the result. */
     private static String edit(String source, String method, Editor edit) {
-        CompilationUnit unit = SourceParser.parse(source);
+        CompilationUnit unit = SourceParser.parse(LATEST, source);
         assertNotNull(unit);
         EditContext ctx = EditContext.of(unit, null, null);
         edit.apply(ctx, methodNamed(unit, method));
         String rewritten = ctx.applyTo(source);
         assertNotNull(rewritten, "the rewrite did not apply");
-        assertFalse(SourceParser.hasSyntaxErrors(SourceParser.parse(rewritten)),
+        assertFalse(SourceParser.hasSyntaxErrors(SourceParser.parse(LATEST, rewritten)),
                 "a marked file must still compile:\n" + rewritten);
         return rewritten;
     }
@@ -68,7 +69,7 @@ class ReviewMarksTest {
 
     /** What {@code source} says {@code method}'s mark is, read back through a fresh parse. */
     private static ReviewMarks.Mark markIn(String source, String method) {
-        return ReviewMarks.markOn(methodNamed(SourceParser.parse(source), method));
+        return ReviewMarks.markOn(methodNamed(SourceParser.parse(LATEST, source), method));
     }
 
     private static final String PLAIN = """
@@ -199,12 +200,12 @@ class ReviewMarksTest {
     @Test
     void anUnmarkedFunctionHasNoMarkAndNoOpenEntries() {
         assertNull(markIn(PLAIN, "run"));
-        assertEquals(List.of(), ReviewMarks.openEntriesOf(methodNamed(SourceParser.parse(PLAIN), "run")));
+        assertEquals(List.of(), ReviewMarks.openEntriesOf(methodNamed(SourceParser.parse(LATEST, PLAIN), "run")));
     }
 
     @Test
     void everyMarkedFunctionInAFileIsFoundInSourceOrderReviewedOrNot() {
-        CompilationUnit unit = SourceParser.parse("""
+        CompilationUnit unit = SourceParser.parse(LATEST, """
                 package com.mybot;
                 %s
                 class Bot {
@@ -245,7 +246,7 @@ class ReviewMarksTest {
 
     @Test
     void markingReviewedTwiceChangesNothingAndSaysSo() {
-        CompilationUnit unit = SourceParser.parse("""
+        CompilationUnit unit = SourceParser.parse(LATEST, """
                 package com.mybot;
                 %s
                 class Bot {
@@ -295,7 +296,7 @@ class ReviewMarksTest {
 
     @Test
     void removingSomethingThatIsNotThereChangesNothingAndSaysSo() {
-        CompilationUnit unit = SourceParser.parse(PLAIN);
+        CompilationUnit unit = SourceParser.parse(LATEST, PLAIN);
         EditContext ctx = EditContext.of(unit, null, null);
 
         assertFalse(ReviewMarks.remove(ctx, methodNamed(unit, "run")));

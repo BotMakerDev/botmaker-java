@@ -2,6 +2,7 @@ package com.botmaker.java.index;
 
 import com.botmaker.java.grammar.SourceParser;
 import com.botmaker.java.edit.palette.ApiDocs;
+import com.botmaker.java.parse.JavaLevel;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.Javadoc;
@@ -65,8 +66,8 @@ public final class ApiDocsParser {
     }
 
     private static void parseSource(String source, Map<String, Map<String, List<ApiDocs.Overload>>> docs) {
-        // Doc comments are read: SourceParser's options enable them.
-        CompilationUnit cu = SourceParser.parse(source);
+        // Doc comments are read: SourceParser's options enable them. A library's source is not the bot's: newest Java.
+        CompilationUnit cu = SourceParser.parse(JavaLevel.LATEST, source);
         cu.accept(new ASTVisitor() {
             @Override
             public boolean visit(MethodDeclaration node) {

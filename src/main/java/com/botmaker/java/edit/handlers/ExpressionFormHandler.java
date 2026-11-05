@@ -1,6 +1,7 @@
 package com.botmaker.java.edit.handlers;
 
 import com.botmaker.java.grammar.SourceParser;
+import com.botmaker.java.parse.JavaLevel;
 import com.botmaker.java.edit.EditContext;
 import com.botmaker.java.edit.helpers.Precedence;
 import org.eclipse.jdt.core.dom.AST;
@@ -43,10 +44,10 @@ public final class ExpressionFormHandler {
      * element type of an array creation. Each simple name in it is imported when the project knows it.
      */
     public static String setType(EditContext ctx, String originalCode, ASTNode owner, String typeText) {
-        Type parsed = SourceParser.type(typeText);
+        Type parsed = SourceParser.type(JavaLevel.of(owner), typeText);
         if (parsed == null) return null;
         AST ast = ctx.ast();
-        Type type = (Type) ASTNode.copySubtree(ast, parsed);
+        Type type = JavaLevel.copy(ast, parsed);
         switch (owner) {
             case CastExpression cast -> ctx.rewriter().set(cast, CastExpression.TYPE_PROPERTY, type, null);
             case InstanceofExpression check -> {
@@ -147,7 +148,7 @@ public final class ExpressionFormHandler {
      * around it.
      */
     public static String setNumberToken(EditContext ctx, String originalCode, NumberLiteral literal, String token) {
-        if (!(SourceParser.expression(token) instanceof NumberLiteral parsed)) return null;
+        if (!(SourceParser.expression(JavaLevel.of(literal), token) instanceof NumberLiteral parsed)) return null;
         ctx.rewriter().set(literal, NumberLiteral.TOKEN_PROPERTY, parsed.getToken(), null);
         return ctx.applyTo(originalCode);
     }
@@ -158,8 +159,13 @@ public final class ExpressionFormHandler {
      * when the text is not one well-formed expression.
      */
     public static String replaceWithSource(String originalCode, Expression target, String text) {
-        Expression parsed = SourceParser.expression(text);
-        if (target == null || parsed == null) return null;
+        if (target == null) return null;
+        JavaLevel level = JavaLevel.of(target);
+        Expression parsed = SourceParser.expression(level, text);
+        if (parsed == null && SourceParser.expression(JavaLevel.LATEST, text) != null) {
+            throw new JavaLevel.TooOld("That code needs a newer Java", level);
+        }
+        if (parsed == null) return null;
         String written = text.strip();
         if (Precedence.needsParentheses(parsed, target)) written = "(" + written + ")";
         int start = target.getStartPosition();

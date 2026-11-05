@@ -1,8 +1,8 @@
 package com.botmaker.java.grammar;
 
+import com.botmaker.java.parse.JavaLevel;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTMatcher;
-import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.Expression;
 
 import java.util.Collection;
@@ -36,7 +36,8 @@ public record JavaValue(Expression node, List<String> imports, String source) {
 
     /** A node the host built, shown as the formatter lays it out. */
     public static JavaValue built(Expression node, Collection<String> imports) {
-        return new JavaValue(node, List.copyOf(imports), SourceFormatter.expression(node.toString()));
+        return new JavaValue(node, List.copyOf(imports),
+                SourceFormatter.expression(JavaLevel.of(node), node.toString()));
     }
 
     /**
@@ -55,9 +56,12 @@ public record JavaValue(Expression node, List<String> imports, String source) {
         return SourceNode.parse(source).map(JavaValue::kept);
     }
 
-    /** {@link #node()} as a node of {@code ast}: what a rewrite of that tree may be handed. */
+    /**
+     * {@link #node()} as a node of {@code ast}: what a rewrite of that tree may be handed. A value is built at
+     * {@code JavaLevel.LATEST}, so a tree before Java 15 gets each text block as the plain literal of its value.
+     */
     public Expression copyInto(AST ast) {
-        return (Expression) ASTNode.copySubtree(ast, node);
+        return JavaLevel.copy(ast, node);
     }
 
     /** {@link #node()} as the grammar reads it, over the text it is shown as. */

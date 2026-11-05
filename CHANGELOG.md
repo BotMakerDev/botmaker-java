@@ -25,6 +25,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   `ReviewMarks`); `edit.palette`, the palette's block and expression kinds, `ApiDocs` and `TypeNames`; and
   `edit.factories.ExpressionFactory`. `BotIndex` is built over a `SourceSet` or a map of sources; the open project's
   index is its holder's to build.
+- `parse.JavaLevel` (2026-11-05): the bot's Java version, read from its pom's `maven.compiler.release` and clamped to
+  what JDT supports. `SourceParser`, `SourceFormatter`, `ParamsFitter` and `ParamValues` take it on every entry,
+  `SourceSet.level()` carries it, and `BotIndex` and `BotParser` parse at it. Code the level cannot hold (a switch
+  expression in a Java 11 bot) is refused with `JavaLevel.TooOld`, whose message names the version; a String
+  literal is written as a text block only from Java 15. `JavaLevel.copy` copies a node into a tree of another level,
+  which JDT's `ASTNode.copySubtree` refuses: a value built at the newest level lands in a bot on Java 25, and a text
+  block in a bot before Java 15 is a plain literal. `JavaLayersTest`: only `JavaLevel` asks JDT for its newest Java
+  or calls `copySubtree`.
 
 ### Fixed
 

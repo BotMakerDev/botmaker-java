@@ -1,6 +1,6 @@
 package com.botmaker.java.grammar;
 
-import org.eclipse.jdt.core.dom.AST;
+import com.botmaker.java.parse.JavaLevel;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.ChildListPropertyDescriptor;
@@ -54,7 +54,7 @@ public final class ShortNames {
         }
         shared.forEach(bot::remove);
 
-        Expression node = (Expression) ASTNode.copySubtree(AST.newAST(AST.getJLSLatest(), false), value.node());
+        Expression node = JavaLevel.copy(JavaLevel.of(value.node()).newAst(), value.node());
         Set<String> imports = new LinkedHashSet<>(value.imports());
         List<QualifiedName> full = new ArrayList<>();
         node.accept(new ASTVisitor() {

@@ -1,5 +1,6 @@
 package com.botmaker.java.grammar;
 
+import com.botmaker.java.parse.JavaLevel;
 import com.botmaker.plugin.api.value.ComponentType;
 import com.botmaker.plugin.api.value.PluginType;
 import com.botmaker.plugin.api.value.Wither;
@@ -43,7 +44,8 @@ final class ValueWriter {
     /** How one write names a class: fully qualified, or by its simple name with the import collected. */
     static final class Names {
 
-        final AST ast = AST.newAST(AST.getJLSLatest(), false);
+        /** A value is written detached, at the newest Java; it takes the bot's level when copied into its tree. */
+        final AST ast = JavaLevel.LATEST.newAst();
         private final boolean qualified;
         private final Set<String> imports = new LinkedHashSet<>();
         private final BotNames bot;

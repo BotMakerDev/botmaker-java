@@ -1,6 +1,7 @@
 package com.botmaker.java.types;
 
 import com.botmaker.java.grammar.SourceParser;
+import com.botmaker.java.parse.JavaLevel;
 import com.botmaker.java.parse.SourceSet;
 import com.botmaker.java.index.LibraryType;
 import com.botmaker.java.index.LibraryIndex;
@@ -126,25 +127,32 @@ public class ProjectAnalyzer {
      * using the current project classpath and source path.
      */
     public CompilationUnit createCompilationUnit(String javaCode) {
-        return createCompilationUnit(sources.classpath(), javaCode, sources.sourceRoot(), null);
+        return createCompilationUnit(sources.level(), sources.classpath(), javaCode, sources.sourceRoot(), null);
     }
 
     /**
      * Parses a single Java source string into a {@link CompilationUnit} with full binding
-     * resolution, against the given classpath and source root.
+     * resolution, against the given classpath and source root, at JDT's newest Java: a caller with no pom.
      */
     public static CompilationUnit createCompilationUnit(List<String> classPaths, String javaCode, Path sourcePath) {
-        return createCompilationUnit(classPaths, javaCode, sourcePath, null);
+        return createCompilationUnit(JavaLevel.LATEST, classPaths, javaCode, sourcePath, null);
+    }
+
+    /** {@link #createCompilationUnit(JavaLevel, List, String, Path, String)} at JDT's newest Java. */
+    public static CompilationUnit createCompilationUnit(List<String> classPaths, String javaCode, Path sourcePath, String unitName) {
+        return createCompilationUnit(JavaLevel.LATEST, classPaths, javaCode, sourcePath, unitName);
     }
 
     /**
-     * Parses a single Java source string into a {@link CompilationUnit} with full binding resolution.
+     * Parses a single Java source string into a {@link CompilationUnit} with full binding resolution, at the
+     * bot's {@code level}.
      * {@code unitName} (the absolute path of the file the source represents) is required by JDT for
      * char[]-source binding resolution — without it source-declared field/method/variable bindings come
      * back {@code null}. Falls back to a best-effort name derived from the source's public type when null.
      */
-    public static CompilationUnit createCompilationUnit(List<String> classPaths, String javaCode, Path sourcePath, String unitName) {
-        ASTParser parser = bindingParser(classPaths, sourcePath);
+    public static CompilationUnit createCompilationUnit(JavaLevel level, List<String> classPaths, String javaCode,
+                                                        Path sourcePath, String unitName) {
+        ASTParser parser = SourceParser.bound(level, classPaths, sourcePath);
         parser.setSource(javaCode.toCharArray());
         parser.setUnitName(unitName != null ? unitName : deriveUnitName(javaCode));
         return (CompilationUnit) parser.createAST(null);
@@ -152,29 +160,24 @@ public class ProjectAnalyzer {
 
     /**
      * Every file of {@code files} parsed in <em>one</em> batch against the classpath and {@code sourcePath}, by
-     * path — what {@code BotIndex} reads a whole bot with. One environment for all of them, so a type the
-     * bot declares is compiled once rather than once per file that names it. The files are read from disk.
+     * path, at the bot's {@code level} — what {@code BotIndex} reads a whole bot with. One environment for all of
+     * them, so a type the bot declares is compiled once rather than once per file that names it. The files are
+     * read from disk.
      */
-    public static Map<Path, CompilationUnit> createCompilationUnits(List<String> classPaths, Path sourcePath,
-                                                                    List<Path> files) {
+    public static Map<Path, CompilationUnit> createCompilationUnits(JavaLevel level, List<String> classPaths,
+                                                                    Path sourcePath, List<Path> files) {
         Map<Path, CompilationUnit> out = new LinkedHashMap<>();
         if (files.isEmpty()) return out;
         String[] paths = files.stream().map(p -> p.toAbsolutePath().toString()).toArray(String[]::new);
         String[] encodings = new String[paths.length];
         Arrays.fill(encodings, "UTF-8");
-        bindingParser(classPaths, sourcePath).createASTs(paths, encodings, new String[0], new FileASTRequestor() {
+        SourceParser.bound(level, classPaths, sourcePath).createASTs(paths, encodings, new String[0], new FileASTRequestor() {
             @Override
             public void acceptAST(String sourceFilePath, CompilationUnit ast) {
                 out.put(Path.of(sourceFilePath), ast);
             }
         }, null);
         return out;
-    }
-
-    /** The parser every bound parse here shares: latest Java, bindings with recovery, the given environment. */
-    private static ASTParser bindingParser(List<String> classPaths, Path sourcePath) {
-        // Unused imports are warnings there: UnusedImports reads them on every canvas edit.
-        return SourceParser.bound(classPaths, sourcePath);
     }
 
     /** Best-effort unit name from the source's first top-level type, so JDT can resolve bindings. */

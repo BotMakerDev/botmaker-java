@@ -17,7 +17,9 @@ no state, no files and no UI: a caller passes text or trees and gets text or tre
 - `parse`: `SourceSet`, the read-only view of a project's sources that a caller hands in: its files, their text and
   trees, its classpath and source root. This module holds no project; it reads one through this. What a bound
   library claims (`ownerOf`, `freshValue`) comes through it too, never from a plugin registry. `BotParser` parses one
-  more source the way the bot's are.
+  more source the way the bot's are. `JavaLevel` is the bot's Java version (`SourceSet.level()`); every parse, format
+  and `AST` takes one, and only `JavaLevel` names JDT's newest level (`JavaLayersTest`). A fragment copied into a
+  bot's tree is built at `LATEST` and copied by `JavaLevel.copy`, never `ASTNode.copySubtree`, which throws across levels; code the bot's level cannot hold throws `JavaLevel.TooOld`.
 - `types`: `ResolvedType` and its kin, `ProjectAnalyzer` (a project's and its libraries' types, over a `SourceSet` and
   an `index.LibraryIndex`), `MethodSignature`.
 - `index`: `LibraryIndex`, the libraries' types a caller indexes, and `LibraryType`; `BotIndex`, the whole bot parsed

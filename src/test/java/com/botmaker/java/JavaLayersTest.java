@@ -20,6 +20,7 @@ class JavaLayersTest {
     private static final Pattern ABOVE_THIS_MODULE = Pattern.compile(
             "(?m)^import (static )?(?!(java|javax\\.lang\\.model|com\\.botmaker\\.java|com\\.botmaker\\.plugin\\.api"
                     + "|org\\.eclipse)\\.)");
+    private static final Pattern NEWEST_JAVA = Pattern.compile("getJLSLatest|latestSupportedJavaVersion");
 
     @Test
     void nothingAboveThisModuleIsImported() throws IOException {
@@ -32,6 +33,20 @@ class JavaLayersTest {
     void onlySourceParserCreatesAParser() throws IOException {
         assertEquals(List.of(MAIN.resolve("com/botmaker/java/grammar/SourceParser.java")),
                 sources().stream().filter(file -> read(file).contains("ASTParser.newParser")).toList());
+    }
+
+    /** Every parse and tree takes the bot's level (2026-11-04): JDT's newest is named in one place. */
+    @Test
+    void onlyJavaLevelNamesJdtsNewestJava() throws IOException {
+        assertEquals(List.of(MAIN.resolve("com/botmaker/java/parse/JavaLevel.java")),
+                sources().stream().filter(file -> NEWEST_JAVA.matcher(read(file)).find()).toList());
+    }
+
+    /** JDT copies within one level only; a copy into a tree of another goes through {@code JavaLevel.copy}. */
+    @Test
+    void onlyJavaLevelCopiesASubtree() throws IOException {
+        assertEquals(List.of(MAIN.resolve("com/botmaker/java/parse/JavaLevel.java")),
+                sources().stream().filter(file -> read(file).contains("ASTNode.copySubtree(")).toList());
     }
 
     private static List<Path> sources() throws IOException {

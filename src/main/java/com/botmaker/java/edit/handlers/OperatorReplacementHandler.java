@@ -1,6 +1,7 @@
 package com.botmaker.java.edit.handlers;
 
 import com.botmaker.java.edit.helpers.AstRewriteHelper;
+import com.botmaker.java.parse.JavaLevel;
 import org.eclipse.jdt.core.dom.*;
 import org.eclipse.jdt.core.dom.rewrite.ASTRewrite;
 
@@ -29,8 +30,8 @@ public class OperatorReplacementHandler {
         ASTRewrite rewriter = ASTRewrite.create(ast);
 
         Assignment newAssignment = ast.newAssignment();
-        newAssignment.setLeftHandSide((Expression) ASTNode.copySubtree(ast, assignment.getLeftHandSide()));
-        newAssignment.setRightHandSide((Expression) ASTNode.copySubtree(ast, assignment.getRightHandSide()));
+        newAssignment.setLeftHandSide((Expression) JavaLevel.copy(ast, assignment.getLeftHandSide()));
+        newAssignment.setRightHandSide((Expression) JavaLevel.copy(ast, assignment.getRightHandSide()));
         newAssignment.setOperator(newOp);
 
         rewriter.replace(assignment, newAssignment, null);
@@ -46,7 +47,7 @@ public class OperatorReplacementHandler {
         ASTRewrite rewriter = ASTRewrite.create(ast);
 
         PrefixExpression newPrefix = ast.newPrefixExpression();
-        newPrefix.setOperand((Expression) ASTNode.copySubtree(ast, prefix.getOperand()));
+        newPrefix.setOperand((Expression) JavaLevel.copy(ast, prefix.getOperand()));
         newPrefix.setOperator(newOp);
 
         rewriter.replace(prefix, newPrefix, null);
@@ -62,7 +63,7 @@ public class OperatorReplacementHandler {
         ASTRewrite rewriter = ASTRewrite.create(ast);
 
         PostfixExpression newPostfix = ast.newPostfixExpression();
-        newPostfix.setOperand((Expression) ASTNode.copySubtree(ast, postfix.getOperand()));
+        newPostfix.setOperand((Expression) JavaLevel.copy(ast, postfix.getOperand()));
         newPostfix.setOperator(newOp);
 
         rewriter.replace(postfix, newPostfix, null);

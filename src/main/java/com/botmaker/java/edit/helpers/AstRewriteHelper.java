@@ -1,6 +1,7 @@
 package com.botmaker.java.edit.helpers;
 
 import com.botmaker.java.grammar.SourceFormatter;
+import com.botmaker.java.parse.JavaLevel;
 import org.eclipse.jdt.core.dom.*;
 import org.eclipse.jdt.core.dom.rewrite.ASTRewrite;
 import org.eclipse.jdt.core.dom.rewrite.ListRewrite;
@@ -27,7 +28,7 @@ public class AstRewriteHelper {
         IDocument document = new Document(originalCode);
         try {
             // The repository's layout, not JDT's default: null options indent an inserted node with a tab.
-            TextEdit edits = rewriter.rewriteAST(document, SourceFormatter.rewriteOptions());
+            TextEdit edits = rewriter.rewriteAST(document, SourceFormatter.rewriteOptions(JavaLevel.of(rewriter.getAST())));
             edits.apply(document);
             return document.get();
         } catch (Exception e) {
@@ -51,7 +52,7 @@ public class AstRewriteHelper {
     public static String applyRewriteAndInsertAt(ASTRewrite rewriter, String originalCode, int offset, String text) {
         IDocument document = new Document(originalCode);
         try {
-            TextEdit edits = rewriter.rewriteAST(document, SourceFormatter.rewriteOptions());
+            TextEdit edits = rewriter.rewriteAST(document, SourceFormatter.rewriteOptions(JavaLevel.of(rewriter.getAST())));
             RangeMarker marker = new RangeMarker(offset, 0);
             try {
                 edits.addChild(marker);

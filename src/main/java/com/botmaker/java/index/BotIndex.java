@@ -1,6 +1,7 @@
 package com.botmaker.java.index;
 
 import com.botmaker.java.parse.BotParser;
+import com.botmaker.java.parse.JavaLevel;
 import com.botmaker.java.parse.SourceSet;
 import com.botmaker.java.edit.guard.CompileGuard;
 import com.botmaker.java.edit.guard.CompileGuard.Problem;
@@ -49,6 +50,7 @@ public final class BotIndex {
     private static final Object CACHE_LOCK = new Object();
     private static BotIndex cached;
 
+    private final JavaLevel level;
     private final List<String> classpath;
     private final List<String> stamps;
     private final Path root;
@@ -56,8 +58,9 @@ public final class BotIndex {
     private final Map<Path, CompilationUnit> units;
     private Map<Path, List<Problem>> errors;
 
-    private BotIndex(List<String> classpath, List<String> stamps, Path root, Map<Path, String> sources,
-                     Map<Path, CompilationUnit> units) {
+    private BotIndex(JavaLevel level, List<String> classpath, List<String> stamps, Path root,
+                     Map<Path, String> sources, Map<Path, CompilationUnit> units) {
+        this.level = level;
         this.classpath = classpath;
         this.stamps = stamps;
         this.root = root;
@@ -73,39 +76,46 @@ public final class BotIndex {
     public static BotIndex of(SourceSet set) {
         Map<Path, String> sources = new LinkedHashMap<>();
         set.files().forEach(file -> set.text(file).ifPresent(text -> sources.put(file, text)));
-        return over(sources, set.classpath(), set.sourceRoot());
+        return over(set.level(), sources, set.classpath(), set.sourceRoot());
+    }
+
+    /** {@link #over(JavaLevel, Map, List, Path)} for a bot with no pom: JDT's newest Java. */
+    public static BotIndex over(Map<Path, String> sources, List<String> classpath, Path root) {
+        return over(JavaLevel.LATEST, sources, classpath, root);
     }
 
     /**
      * {@code sources} parsed as one bot, answered from the cache when they are what it was built from.
      *
+     * @param level     the Java the bot is written in
      * @param sources   every source by absolute path, in the order answers should list them
      * @param classpath the project's resolved jars; empty resolves the bot's own names and recovers the rest
      * @param root      the bot's {@code src/main/java}; a source outside it is parsed on its own
      */
-    public static BotIndex over(Map<Path, String> sources, List<String> classpath, Path root) {
+    public static BotIndex over(JavaLevel level, Map<Path, String> sources, List<String> classpath, Path root) {
         // Stamped outside the lock: a stat of every jar is the slow half of the question.
         List<String> stamps = stamps(classpath == null ? List.of() : classpath);
         synchronized (CACHE_LOCK) {
-            if (cached != null && cached.builtFrom(classpath, stamps, root, sources)) return cached;
+            if (cached != null && cached.builtFrom(level, classpath, stamps, root, sources)) return cached;
         }
-        BotIndex index = build(sources, classpath, root, stamps);
+        BotIndex index = build(level, sources, classpath, root, stamps);
         synchronized (CACHE_LOCK) {
             cached = index;
         }
         return index;
     }
 
-    private static BotIndex build(Map<Path, String> sources, List<String> classpath, Path root) {
-        return build(sources, classpath, root, stamps(classpath == null ? List.of() : classpath));
+    private static BotIndex build(JavaLevel level, Map<Path, String> sources, List<String> classpath, Path root) {
+        return build(level, sources, classpath, root, stamps(classpath == null ? List.of() : classpath));
     }
 
     /** {@code stamps} taken before the parse: a jar rebuilt while it runs is a change the next call sees. */
-    private static BotIndex build(Map<Path, String> sources, List<String> classpath, Path root, List<String> stamps) {
+    private static BotIndex build(JavaLevel level, Map<Path, String> sources, List<String> classpath, Path root,
+                                  List<String> stamps) {
         Map<Path, String> copy = normalised(sources);
         List<String> jars = classpath == null ? List.of() : List.copyOf(classpath);
         Path base = root == null ? null : root.toAbsolutePath().normalize();
-        return new BotIndex(jars, List.copyOf(stamps), base, copy, parse(copy, jars, base));
+        return new BotIndex(level, jars, List.copyOf(stamps), base, copy, parse(level, copy, jars, base));
     }
 
     /**
@@ -140,7 +150,7 @@ public final class BotIndex {
         rewrites.forEach((file, text) -> {
             if (!sources.containsKey(file)) changed.put(file, text);
         });
-        return build(changed, classpath, root);
+        return build(level, changed, classpath, root);
     }
 
     /** The same, with nothing moved. */
@@ -153,12 +163,12 @@ public final class BotIndex {
      * {@code sources} lacks is gone. Not cached, as {@link #with} is not.
      */
     public BotIndex replacing(Map<Path, String> sources) {
-        return build(sources, classpath, root);
+        return build(level, sources, classpath, root);
     }
 
     /** These sources parsed against {@code classpath} instead — the jars a bot will compile with after a move. */
     public BotIndex against(List<String> classpath) {
-        return build(sources, classpath, root);
+        return build(level, sources, classpath, root);
     }
 
     /**
@@ -168,7 +178,12 @@ public final class BotIndex {
     public BotIndex against(List<String> classpath, Map<Path, String> added) {
         Map<Path, String> all = new LinkedHashMap<>(sources);
         all.putAll(added);
-        return build(all, classpath, root);
+        return build(level, all, classpath, root);
+    }
+
+    /** The Java these sources were read at. */
+    public JavaLevel level() {
+        return level;
     }
 
     /** The jars these sources were parsed against. */
@@ -183,7 +198,7 @@ public final class BotIndex {
 
     /** The parser that reads one more text the way this index read its own. */
     public BotParser parser() {
-        return new BotParser(classpath, root);
+        return new BotParser(level, classpath, root);
     }
 
     /**
@@ -298,10 +313,12 @@ public final class BotIndex {
         return firstNewError(after, Map.of());
     }
 
-    private boolean builtFrom(List<String> classpath, List<String> stamps, Path root, Map<Path, String> sources) {
+    private boolean builtFrom(JavaLevel level, List<String> classpath, List<String> stamps, Path root,
+                              Map<Path, String> sources) {
         Path base = root == null ? null : root.toAbsolutePath().normalize();
         List<String> jars = classpath == null ? List.of() : classpath;
-        return this.classpath.equals(jars)
+        return this.level.equals(level)
+                && this.classpath.equals(jars)
                 && Objects.equals(this.root, base)
                 && this.sources.equals(normalised(sources))
                 && this.stamps.equals(stamps);
@@ -320,9 +337,10 @@ public final class BotIndex {
      * keyed back by its real path. With no root there is no tree to resolve through, and each file is parsed
      * on its own.
      */
-    private static Map<Path, CompilationUnit> parse(Map<Path, String> sources, List<String> classpath, Path root) {
+    private static Map<Path, CompilationUnit> parse(JavaLevel level, Map<Path, String> sources,
+                                                    List<String> classpath, Path root) {
         Map<Path, CompilationUnit> out = new LinkedHashMap<>();
-        BotParser alone = new BotParser(classpath, root);
+        BotParser alone = new BotParser(level, classpath, root);
         if (root == null) {
             sources.forEach((file, text) -> out.put(file, alone.parse(file, text)));
             return out;
@@ -338,7 +356,7 @@ public final class BotIndex {
                 Files.writeString(copy, entry.getValue());
                 real.put(copy.toAbsolutePath().normalize(), entry.getKey());
             }
-            Map<Path, CompilationUnit> parsed = ProjectAnalyzer.createCompilationUnits(classpath, scratch,
+            Map<Path, CompilationUnit> parsed = ProjectAnalyzer.createCompilationUnits(level, classpath, scratch,
                     List.copyOf(real.keySet()));
             // In walk order, whatever order the batch answered in.
             Map<Path, CompilationUnit> byReal = new LinkedHashMap<>();

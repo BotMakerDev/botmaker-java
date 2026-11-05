@@ -1,6 +1,7 @@
 package com.botmaker.java.edit.handlers;
 
 import com.botmaker.java.grammar.SourceParser;
+import com.botmaker.java.parse.JavaLevel;
 import org.eclipse.jdt.core.dom.Block;
 import org.eclipse.jdt.core.dom.Statement;
 import org.eclipse.jdt.core.dom.SwitchStatement;
@@ -22,10 +23,17 @@ public final class StatementSourceHandler {
      * {@code originalCode} with {@code target} replaced by {@code newSource}, or {@code null} when the text is
      * blank, does not parse as statements, or is several statements where only one can stand (the body of a
      * labelled statement, say — only a block or a switch holds a list).
+     *
+     * @throws JavaLevel.TooOld when the text is Java statements only in a newer Java than the bot's: a local record
+     *         in a Java 11 bot is refused by its version, not as a typo
      */
     public static String replace(String originalCode, Statement target, String newSource) {
         if (target == null || newSource == null || newSource.isBlank()) return null;
-        int count = statementCount(newSource);
+        JavaLevel level = JavaLevel.of(target);
+        int count = statementCount(level, newSource);
+        if (count == 0 && statementCount(JavaLevel.LATEST, newSource) > 0) {
+            throw new JavaLevel.TooOld("That code needs a newer Java", level);
+        }
         if (count == 0) return null;
         boolean inList = target.getParent() instanceof Block || target.getParent() instanceof SwitchStatement;
         if (count > 1 && !inList) return null;
@@ -36,8 +44,8 @@ public final class StatementSourceHandler {
     }
 
     /** How many statements {@code source} holds, or 0 when it is not well-formed Java statements. */
-    static int statementCount(String source) {
-        Block block = SourceParser.statements(source);
+    static int statementCount(JavaLevel level, String source) {
+        Block block = SourceParser.statements(level, source);
         return block == null ? 0 : block.statements().size();
     }
 }

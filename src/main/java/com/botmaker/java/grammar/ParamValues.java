@@ -1,5 +1,6 @@
 package com.botmaker.java.grammar;
 
+import com.botmaker.java.parse.JavaLevel;
 import com.botmaker.plugin.api.params.Param;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.Annotation;
@@ -43,18 +44,20 @@ public final class ParamValues {
      * imports {@code value} names; empty when the source does not parse, or there is no such class or method, or the
      * method's body is not one {@code return}.
      */
-    public static Optional<String> withReturned(String source, String group, String method, JavaValue value) {
-        return written(source, group, method, value, null);
+    public static Optional<String> withReturned(JavaLevel level, String source, String group, String method,
+                                                JavaValue value) {
+        return written(level, source, group, method, value, null);
     }
 
     /** The same for a value a run wrote at {@code at}: the method carries that time, {@code @Param.Kept}. */
-    public static Optional<String> withReturned(String source, String group, String method, JavaValue value,
-                                                Instant at) {
-        return written(source, group, method, value, at);
+    public static Optional<String> withReturned(JavaLevel level, String source, String group, String method,
+                                                JavaValue value, Instant at) {
+        return written(level, source, group, method, value, at);
     }
 
-    private static Optional<String> written(String source, String group, String method, JavaValue value, Instant at) {
-        CompilationUnit unit = SourceParser.parse(source);
+    private static Optional<String> written(JavaLevel level, String source, String group, String method,
+                                            JavaValue value, Instant at) {
+        CompilationUnit unit = SourceParser.parse(level, source);
         if (value == null || SourceParser.hasSyntaxErrors(unit)) return Optional.empty();
         Optional<MethodDeclaration> declared = declared(unit, group, method);
         Optional<Expression> returned = declared.flatMap(ParamValues::returned);
@@ -66,7 +69,7 @@ public final class ParamValues {
         addImports(unit, rewrite, value.imports());
         Document document = new Document(source);
         try {
-            TextEdit edits = rewrite.rewriteAST(document, SourceFormatter.rewriteOptions());
+            TextEdit edits = rewrite.rewriteAST(document, SourceFormatter.rewriteOptions(level));
             edits.apply(document);
         } catch (MalformedTreeException | BadLocationException | IllegalArgumentException unwritable) {
             return Optional.empty();
@@ -79,14 +82,14 @@ public final class ParamValues {
      * taken from {@code disk}, where the run wrote it: one whose value differs from {@code before}, the file as the
      * run started. Every other value stays as held: it is the person's. Unchanged when a source does not parse.
      */
-    public static String withRunsValues(String held, String before, String disk) {
-        CompilationUnit unit = SourceParser.parse(held);
+    public static String withRunsValues(JavaLevel level, String held, String before, String disk) {
+        CompilationUnit unit = SourceParser.parse(level, held);
         if (SourceParser.hasSyntaxErrors(unit)) return held;
         String out = held;
         for (MethodDeclaration method : ParamsFitter.parameters(unit).values()) {
             String name = method.getName().getIdentifier();
-            if (changesDuringRun(method) && !ParamsFitter.withValue(before, disk, name).equals(before)) {
-                out = ParamsFitter.withValue(out, disk, name);
+            if (changesDuringRun(method) && !ParamsFitter.withValue(level, before, disk, name).equals(before)) {
+                out = ParamsFitter.withValue(level, out, disk, name);
             }
         }
         return out;
@@ -96,8 +99,8 @@ public final class ParamValues {
      * The time on {@code group}'s parameter {@code method}, {@code @Param.Kept}: when a run last wrote its value.
      * Empty when it has none, or the source or the time does not read.
      */
-    public static Optional<Instant> keptAt(String source, String group, String method) {
-        CompilationUnit unit = SourceParser.parse(source);
+    public static Optional<Instant> keptAt(JavaLevel level, String source, String group, String method) {
+        CompilationUnit unit = SourceParser.parse(level, source);
         if (SourceParser.hasSyntaxErrors(unit)) return Optional.empty();
         return declared(unit, group, method).map(ParamsFitter::keptOn)
                 .filter(NormalAnnotation.class::isInstance).map(NormalAnnotation.class::cast)

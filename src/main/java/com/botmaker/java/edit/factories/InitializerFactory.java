@@ -7,6 +7,7 @@ import com.botmaker.java.edit.handlers.LambdaCallHandler;
 import com.botmaker.java.edit.helpers.DefaultValueHelper;
 import com.botmaker.java.grammar.ShortNames;
 import com.botmaker.java.grammar.SourceParser;
+import com.botmaker.java.parse.JavaLevel;
 import com.botmaker.java.parse.SourceSet;
 import com.botmaker.java.types.ProjectAnalyzer;
 import com.botmaker.java.types.ResolvedType;
@@ -369,7 +370,7 @@ public class InitializerFactory {
         if (dimensions == 1) {
             if (valuesToPreserve != null && !valuesToPreserve.isEmpty()) {
                 for (Expression value : valuesToPreserve) {
-                    initializer.expressions().add(ASTNode.copySubtree(ast, value));
+                    initializer.expressions().add(JavaLevel.copy(ast, value));
                 }
             } else {
                 Expression defaultValue = createDefaultInitializer(ast, leafType, cu, sources);

@@ -1,5 +1,6 @@
 package com.botmaker.java.grammar;
 
+import com.botmaker.java.parse.JavaLevel;
 import org.eclipse.jdt.core.dom.Expression;
 
 import java.util.Optional;
@@ -13,9 +14,14 @@ import java.util.Optional;
  */
 public record SourceNode(Expression node, String text) {
 
-    /** {@code source} parsed as exactly one expression ({@link SourceParser#expression}), with its text, or empty. */
+    /**
+     * {@code source} parsed as exactly one expression ({@link SourceParser#expression}), with its text, or empty. A
+     * value's text alone is no bot's, so it is read at {@link JavaLevel#LATEST}; copied into a bot's tree it takes
+     * that tree's level, and a node the level cannot hold is refused there.
+     */
     public static Optional<SourceNode> parse(String source) {
-        return Optional.ofNullable(SourceParser.expression(source)).map(node -> new SourceNode(node, source));
+        return Optional.ofNullable(SourceParser.expression(JavaLevel.LATEST, source))
+                .map(node -> new SourceNode(node, source));
     }
 
     /** The node's own slice of {@link #text}, as it was written. */

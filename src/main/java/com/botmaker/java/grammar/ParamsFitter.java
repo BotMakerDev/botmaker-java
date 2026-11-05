@@ -1,9 +1,9 @@
 package com.botmaker.java.grammar;
 
+import com.botmaker.java.parse.JavaLevel;
 import com.botmaker.plugin.api.params.Param;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTMatcher;
-import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.Annotation;
 import org.eclipse.jdt.core.dom.ArrayType;
@@ -101,10 +101,11 @@ public final class ParamsFitter {
      * With no Java file under {@code startingRoot} nothing is decided: a bot without a starting copy, or a checkout
      * that left it empty, loses no parameter.
      */
-    public static List<Fitted> onDisk(Path paramsRoot, Path startingRoot, Path backups) throws IOException {
+    public static List<Fitted> onDisk(JavaLevel level, Path paramsRoot, Path startingRoot, Path backups)
+            throws IOException {
         Map<Path, String> starting = sources(startingRoot);
         if (starting.isEmpty()) return List.of();
-        List<Fitted> out = over(sources(paramsRoot), starting);
+        List<Fitted> out = over(level, sources(paramsRoot), starting);
         Path pass = backups.resolve(PASS_TIME.format(LocalDateTime.now()));
         for (Fitted each : out) {
             Path file = paramsRoot.resolve(each.file());
@@ -126,10 +127,10 @@ public final class ParamsFitter {
      * <p>Nothing is decided while any source of either side does not parse: a file mid-edit is no reason to drop a
      * value.
      */
-    public static List<Fitted> over(Map<Path, String> params, Map<Path, String> starting) {
+    public static List<Fitted> over(JavaLevel level, Map<Path, String> params, Map<Path, String> starting) {
         for (Map<Path, String> side : List.of(params, starting)) {
             for (String source : side.values()) {
-                if (SourceParser.hasSyntaxErrors(SourceParser.parse(source))) return List.of();
+                if (SourceParser.hasSyntaxErrors(SourceParser.parse(level, source))) return List.of();
             }
         }
         Set<Path> files = new TreeSet<>(Comparator.comparing(Path::toString));
@@ -141,11 +142,11 @@ public final class ParamsFitter {
             String start = starting.get(file);
             if (start == null) {
                 // A file with no @Param class is no group (a bot's Parameters.java of @Param fields): left alone.
-                if (isGroup(SourceParser.parse(mine))) out.add(new Fitted(file, Optional.empty(), List.of("deleted")));
+                if (isGroup(SourceParser.parse(level, mine))) out.add(new Fitted(file, Optional.empty(), List.of("deleted")));
             } else if (mine == null) {
                 out.add(new Fitted(file, Optional.of(start), List.of("added")));
             } else {
-                Fit fit = fitted(start, mine);
+                Fit fit = fitted(level, start, mine);
                 if (!fit.changes().isEmpty()) out.add(new Fitted(file, Optional.of(fit.source()), fit.changes()));
             }
         }
@@ -157,20 +158,20 @@ public final class ParamsFitter {
      * that body needs and the time a run wrote it ({@code @Param.Kept}), or no time when {@code params} has none.
      * Unchanged when either side lacks the parameter, their types differ, or a source does not parse.
      */
-    public static String withValue(String starting, String params, String name) {
-        return taken(starting, params, name, true);
+    public static String withValue(JavaLevel level, String starting, String params, String name) {
+        return taken(level, starting, params, name, true);
     }
 
     /**
      * The same without the time, which never reaches a starting copy: what <i>Make this the starting value</i> writes.
      */
-    public static String withStartingValue(String starting, String params, String name) {
-        return taken(starting, params, name, false);
+    public static String withStartingValue(JavaLevel level, String starting, String params, String name) {
+        return taken(level, starting, params, name, false);
     }
 
-    private static String taken(String starting, String params, String name, boolean withTime) {
-        CompilationUnit startUnit = SourceParser.parse(starting);
-        CompilationUnit mineUnit = SourceParser.parse(params);
+    private static String taken(JavaLevel level, String starting, String params, String name, boolean withTime) {
+        CompilationUnit startUnit = SourceParser.parse(level, starting);
+        CompilationUnit mineUnit = SourceParser.parse(level, params);
         if (SourceParser.hasSyntaxErrors(startUnit) || SourceParser.hasSyntaxErrors(mineUnit)) return starting;
         MethodDeclaration start = parameters(startUnit).get(name);
         MethodDeclaration mine = parameters(mineUnit).get(name);
@@ -295,18 +296,18 @@ public final class ParamsFitter {
     }
 
     /** {@code params} fitted to {@code starting}: the text unchanged when it fits. */
-    public static String fit(String starting, String params) {
-        return fitted(starting, params).source();
+    public static String fit(JavaLevel level, String starting, String params) {
+        return fitted(level, starting, params).source();
     }
 
     private record Fit(String source, List<String> changes) {}
 
-    private static Fit fitted(String starting, String params) {
-        CompilationUnit startUnit = SourceParser.parse(starting);
-        CompilationUnit mineUnit = SourceParser.parse(params);
+    private static Fit fitted(JavaLevel level, String starting, String params) {
+        CompilationUnit startUnit = SourceParser.parse(level, starting);
+        CompilationUnit mineUnit = SourceParser.parse(level, params);
         Map<String, MethodDeclaration> startMethods = parameters(startUnit);
         Map<String, MethodDeclaration> mineMethods = parameters(mineUnit);
-        if (sameFrame(starting, params)) return new Fit(params, List.of());
+        if (sameFrame(level, starting, params)) return new Fit(params, List.of());
         List<String> changes = new ArrayList<>();
         Map<MethodDeclaration, MethodDeclaration> kept = new LinkedHashMap<>();
         Set<String> usedByKept = new HashSet<>();
@@ -355,19 +356,19 @@ public final class ParamsFitter {
         ASTRewrite rewrite = ASTRewrite.create(ast);
         values.forEach((method, from) -> {
             if (!method.getBody().subtreeMatch(new ASTMatcher(), from.getBody())) {
-                rewrite.replace(method.getBody(), ASTNode.copySubtree(ast, from.getBody()), null);
+                rewrite.replace(method.getBody(), JavaLevel.copy(ast, from.getBody()), null);
             }
             if (withTime && !sameTime(method, from)) {
                 ListRewrite modifiers = rewrite.getListRewrite(method, MethodDeclaration.MODIFIERS2_PROPERTY);
                 if (keptOn(method) != null) modifiers.remove(keptOn(method), null);
-                if (keptOn(from) != null) modifiers.insertFirst(ASTNode.copySubtree(ast, keptOn(from)), null);
+                if (keptOn(from) != null) modifiers.insertFirst(JavaLevel.copy(ast, keptOn(from)), null);
             }
         });
         ListRewrite list = rewrite.getListRewrite(unit, CompilationUnit.IMPORTS_PROPERTY);
-        for (ImportDeclaration imported : imports) list.insertLast(ASTNode.copySubtree(ast, imported), null);
+        for (ImportDeclaration imported : imports) list.insertLast(JavaLevel.copy(ast, imported), null);
         Document document = new Document(source);
         try {
-            rewrite.rewriteAST(document, SourceFormatter.rewriteOptions()).apply(document);
+            rewrite.rewriteAST(document, SourceFormatter.rewriteOptions(JavaLevel.of(ast))).apply(document);
         } catch (MalformedTreeException | BadLocationException | IllegalArgumentException unwritable) {
             throw new IllegalStateException("the rewrite could not be applied", unwritable);
         }
@@ -378,9 +379,9 @@ public final class ParamsFitter {
      * Whether the two sources differ only in their imports and their parameters' values (body and time), compared as
      * trees. A comment outside a doc comment is not in the tree, so it never makes a fit.
      */
-    private static boolean sameFrame(String startingSource, String paramsSource) {
-        CompilationUnit starting = withoutTimes(startingSource);
-        CompilationUnit params = withoutTimes(paramsSource);
+    private static boolean sameFrame(JavaLevel level, String startingSource, String paramsSource) {
+        CompilationUnit starting = withoutTimes(level, startingSource);
+        CompilationUnit params = withoutTimes(level, paramsSource);
         Map<String, MethodDeclaration> startMethods = parameters(starting);
         Map<String, MethodDeclaration> mineMethods = parameters(params);
         Set<Block> values = new HashSet<>();
@@ -401,8 +402,8 @@ public final class ParamsFitter {
     }
 
     /** A tree of {@code source} for comparing only, each {@code @Param.Kept} taken off. */
-    private static CompilationUnit withoutTimes(String source) {
-        CompilationUnit unit = SourceParser.parse(source);
+    private static CompilationUnit withoutTimes(JavaLevel level, String source) {
+        CompilationUnit unit = SourceParser.parse(level, source);
         parameters(unit).values().forEach(method -> method.modifiers().remove(keptOn(method)));
         return unit;
     }

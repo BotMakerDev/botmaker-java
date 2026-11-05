@@ -1,5 +1,6 @@
 package com.botmaker.java.grammar;
 
+import com.botmaker.java.parse.JavaLevel;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.BooleanLiteral;
 import org.eclipse.jdt.core.dom.CharacterLiteral;
@@ -292,8 +293,10 @@ public final class JdkLiterals {
             StringLiteral literal = ast.newStringLiteral();
             literal.setEscapedValue(token);
             String value = literal.getLiteralValue();
-            // Lines read as lines (a screen's notes, 2026-10-15): a text block, not one long "…\n…".
-            return value.contains("\n") ? textBlock(ast, value) : literal;
+            // Lines read as lines (a screen's notes, 2026-10-15): a text block, not one long "…\n…", where the
+            // bot's Java has them.
+            boolean blocks = JavaLevel.of(ast).has(JavaLevel.Feature.TEXT_BLOCKS);
+            return blocks && value.contains("\n") ? textBlock(ast, value) : literal;
         }
         if (token.startsWith("'")) {
             CharacterLiteral literal = ast.newCharacterLiteral();

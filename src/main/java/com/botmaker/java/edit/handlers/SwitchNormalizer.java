@@ -1,8 +1,8 @@
 package com.botmaker.java.edit.handlers;
 
 import com.botmaker.java.edit.helpers.AstRewriteHelper;
+import com.botmaker.java.parse.JavaLevel;
 import org.eclipse.jdt.core.dom.AST;
-import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.Block;
 import org.eclipse.jdt.core.dom.BreakStatement;
@@ -152,7 +152,7 @@ public final class SwitchNormalizer {
             // change of meaning rather than a tidy-up.
             if (body instanceof SwitchCase) continue;
             Block braced = ast.newBlock();
-            braced.statements().add(ASTNode.copySubtree(ast, body));
+            braced.statements().add(JavaLevel.copy(ast, body));
             rewriter.replace(body, braced, null);
             changed = true;
         }

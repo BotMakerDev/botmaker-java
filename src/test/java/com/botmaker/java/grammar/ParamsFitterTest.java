@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
+import static com.botmaker.java.parse.JavaLevel.LATEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -62,7 +63,7 @@ class ParamsFitterTest {
         String mine = MINE.replace("public String account() { return \"main\"; }",
                 "public String account() { return \"main\"; }\n\n    public Mode mode() { return Mode.FAST; }");
 
-        String fitted = flat(ParamsFitter.fit(starting, mine));
+        String fitted = flat(ParamsFitter.fit(LATEST, starting, mine));
 
         assertTrue(fitted.contains("public int tries() { return 3; }"), "kept: " + fitted);
         assertTrue(fitted.contains("public long rest() { return 60; }"), "retyped, reset: " + fitted);
@@ -70,17 +71,17 @@ class ParamsFitterTest {
                 "the starting copy's annotations, this computer's value: " + fitted);
         assertFalse(fitted.contains("mode()"), "not in the starting copy: " + fitted);
         assertFalse(fitted.contains("import com.refbot.Mode;"), "no kept value uses it: " + fitted);
-        assertEquals(MINE, ParamsFitter.fit(STARTING, MINE), "a fitting file is left alone");
+        assertEquals(MINE, ParamsFitter.fit(LATEST, STARTING, MINE), "a fitting file is left alone");
 
-        String made = ParamsFitter.withValue(STARTING, MINE.replace("Duration.ofSeconds(5)", "Mode.REST"), "account");
+        String made = ParamsFitter.withValue(LATEST, STARTING, MINE.replace("Duration.ofSeconds(5)", "Mode.REST"), "account");
         assertTrue(made.contains("return \"main\";") && made.contains("return 10;"), "one value, no other: " + made);
         assertFalse(made.contains("import com.refbot.Mode;"), "only what that value uses: " + made);
-        String rest = ParamsFitter.withValue(STARTING.replace("Duration rest", "Mode rest")
+        String rest = ParamsFitter.withValue(LATEST, STARTING.replace("Duration rest", "Mode rest")
                 .replace("Duration.ofMinutes(1)", "Mode.FAST"), MINE.replace("Duration rest", "Mode rest")
                 .replace("Duration.ofSeconds(5)", "Mode.REST"), "rest");
         assertTrue(rest.contains("return Mode.REST;") && rest.contains("import com.refbot.Mode;"), rest);
 
-        String overMode =ParamsFitter.fit(starting, mine.replace("return \"main\";", "return mode().name();"));
+        String overMode =ParamsFitter.fit(LATEST, starting, mine.replace("return \"main\";", "return mode().name();"));
         assertTrue(overMode.contains("public String account() { return \"\"; }"),
                 "a value over a dropped parameter is reset, never left not compiling: " + overMode);
     }
@@ -100,13 +101,13 @@ class ParamsFitterTest {
                 .replace("public int tries()", "public int attempts()")
                 .replace("public String account() { return \"\"; }", "public long login() { return 0; }\n\n" + rule);
 
-        String fitted = flat(ParamsFitter.fit(starting, MINE));
+        String fitted = flat(ParamsFitter.fit(LATEST, starting, MINE));
 
         assertTrue(fitted.contains("public int attempts() { return 3; }"), "moved by the rule: " + fitted);
         assertTrue(fitted.contains("public long login() { return 0; }"), "a retype moves nothing: " + fitted);
         assertFalse(fitted.contains("public int tries()") || fitted.contains("\"main\""), fitted);
         assertEquals(List.of("renamed tries() to attempts()", "added login()", "dropped account()"),
-                ParamsFitter.over(Map.of(FILE, MINE), Map.of(FILE, starting)).getFirst().changes());
+                ParamsFitter.over(LATEST, Map.of(FILE, MINE), Map.of(FILE, starting)).getFirst().changes());
     }
 
     /** A type is what its imports resolve to: {@code a.Foo} is not {@code b.Foo}, an import is its whole name. */
@@ -117,16 +118,16 @@ class ParamsFitterTest {
         String mine = MINE.replace("import java.time.Duration;", "import java.time.Duration;\nimport b.Foo;")
                 .replace("public String account() { return \"main\"; }", "public Foo kind() { return Foo.Y; }");
 
-        String fitted = flat(ParamsFitter.fit(starting, mine));
+        String fitted = flat(ParamsFitter.fit(LATEST, starting, mine));
         assertTrue(fitted.contains("public Foo kind() { return Foo.X; }"), "another Foo is reset: " + fitted);
-        String onDemand = flat(ParamsFitter.fit(starting, mine.replace("import b.Foo;", "import b.*;")));
+        String onDemand = flat(ParamsFitter.fit(LATEST, starting, mine.replace("import b.Foo;", "import b.*;")));
         assertTrue(onDemand.contains("return Foo.X;"), "nor is b.*'s Foo a.Foo: " + onDemand);
-        String same = flat(ParamsFitter.fit(starting, mine.replace("import b.Foo;", "import a.*;")));
+        String same = flat(ParamsFitter.fit(LATEST, starting, mine.replace("import b.Foo;", "import a.*;")));
         assertTrue(same.contains("return Foo.Y;"), "a.*'s Foo is: " + same);
 
         String whole = MINE.replace("public Duration rest()", "public java.time.Duration rest()");
-        assertTrue(flat(ParamsFitter.fit(STARTING, whole)).contains("return Duration.ofSeconds(5);"),
-                "an imported Duration and one written whole are one type: " + ParamsFitter.fit(STARTING, whole));
+        assertTrue(flat(ParamsFitter.fit(LATEST, STARTING, whole)).contains("return Duration.ofSeconds(5);"),
+                "an imported Duration and one written whole are one type: " + ParamsFitter.fit(LATEST, STARTING, whole));
     }
 
     /** The trees decide, so spacing never makes a difference and a value already there keeps its own text. */
@@ -134,8 +135,8 @@ class ParamsFitterTest {
     void aBodyWrittenAlikeKeepsItsText() {
         String spaced = STARTING.replace("return 3;", "return    3;");
 
-        assertEquals(STARTING, ParamsFitter.withValue(STARTING, spaced, "tries"), "the same value changes nothing");
-        assertEquals(spaced, ParamsFitter.fit(STARTING, spaced), "only spacing differs: this file already fits");
+        assertEquals(STARTING, ParamsFitter.withValue(LATEST, STARTING, spaced, "tries"), "the same value changes nothing");
+        assertEquals(spaced, ParamsFitter.fit(LATEST, STARTING, spaced), "only spacing differs: this file already fits");
     }
 
     @Test
@@ -143,12 +144,12 @@ class ParamsFitterTest {
         String starting = STARTING.replace("Duration rest", "Mode rest").replace("Duration.ofMinutes(1)", "Mode.FAST");
         String mine = MINE.replace("Duration rest", "Mode rest").replace("Duration.ofSeconds(5)", "Mode.REST");
 
-        String made = ParamsFitter.withValue(starting, mine, "rest");
+        String made = ParamsFitter.withValue(LATEST, starting, mine, "rest");
 
         assertEquals(made.indexOf("import com.refbot.Mode;"), made.lastIndexOf("import com.refbot.Mode;"), made);
         assertTrue(made.contains("import com.refbot.Mode;"), made);
         assertTrue(made.contains("return Mode.REST;"), made);
-        assertEquals(made, ParamsFitter.withValue(made, mine, "rest"), "written once, it is not written again");
+        assertEquals(made, ParamsFitter.withValue(LATEST, made, mine, "rest"), "written once, it is not written again");
     }
 
     /** When a run wrote a value belongs to the value: it follows the value, and never reaches a starting copy. */
@@ -157,21 +158,21 @@ class ParamsFitterTest {
         String kept = "@Param.Kept(at = \"2026-11-04T10:00:00Z\")";
         String mine = MINE.replace("public int tries()", kept + " public int tries()");
 
-        assertEquals(mine, ParamsFitter.fit(STARTING, mine), "a time is no reason to fit");
+        assertEquals(mine, ParamsFitter.fit(LATEST, STARTING, mine), "a time is no reason to fit");
 
         String reshaped = STARTING.replace("Attempts before giving up", "Attempts");
-        String fitted = flat(ParamsFitter.fit(reshaped, mine));
+        String fitted = flat(ParamsFitter.fit(LATEST, reshaped, mine));
         assertTrue(fitted.contains("\"Attempts\")"), fitted);
         assertTrue(fitted.contains(kept) && fitted.contains("public int tries() { return 3; }"), fitted);
 
-        String retyped = flat(ParamsFitter.fit(STARTING.replace("int tries", "long tries"), mine));
+        String retyped = flat(ParamsFitter.fit(LATEST, STARTING.replace("int tries", "long tries"), mine));
         assertFalse(retyped.contains("Kept"), "a reset value has no time: " + retyped);
 
-        assertFalse(ParamsFitter.withStartingValue(STARTING, mine, "tries").contains("Kept"), "never in a starting copy");
+        assertFalse(ParamsFitter.withStartingValue(LATEST, STARTING, mine, "tries").contains("Kept"), "never in a starting copy");
         String again = mine.replace("10:00:00Z", "11:00:00Z");
-        String timed = ParamsFitter.withValue(mine, again, "tries");
+        String timed = ParamsFitter.withValue(LATEST, mine, again, "tries");
         assertTrue(timed.contains("11:00:00Z") && !timed.contains("10:00:00Z"), "the same value, its new time: " + timed);
-        String forgotten = flat(ParamsFitter.withValue(mine, STARTING, "tries"));
+        String forgotten = flat(ParamsFitter.withValue(LATEST, mine, STARTING, "tries"));
         assertFalse(forgotten.contains("Kept"), "set back to its starting value: " + forgotten);
         assertTrue(forgotten.contains("public int tries() { return 10; }"), forgotten);
     }
@@ -189,7 +190,7 @@ class ParamsFitterTest {
         write(starting.resolve(FILE), STARTING);
         write(starting.resolve("sdk/Sdk.java"), "package com.refbot.params.sdk;\npublic class Sdk {}\n");
 
-        List<ParamsFitter.Fitted> fitted = ParamsFitter.onDisk(params, starting, backups);
+        List<ParamsFitter.Fitted> fitted = ParamsFitter.onDisk(LATEST, params, starting, backups);
 
         assertEquals(3, fitted.size(), fitted.toString());
         String now = flat(Files.readString(params.resolve(FILE)));
@@ -210,12 +211,12 @@ class ParamsFitterTest {
     void nothingIsDecidedWhileASourceDoesNotParse(@TempDir Path bot) throws IOException {
         Map<Path, String> mine = Map.of(FILE, MINE.replace("return 3;", "return 3"));
 
-        assertEquals(List.of(), ParamsFitter.over(mine, Map.of(FILE, STARTING.replace("int tries", "long tries"))));
-        assertEquals(List.of(), ParamsFitter.over(Map.of(FILE, MINE), Map.of(FILE, STARTING + "}")));
+        assertEquals(List.of(), ParamsFitter.over(LATEST, mine, Map.of(FILE, STARTING.replace("int tries", "long tries"))));
+        assertEquals(List.of(), ParamsFitter.over(LATEST, Map.of(FILE, MINE), Map.of(FILE, STARTING + "}")));
 
         Path params = bot.resolve("params");
         write(params.resolve(FILE), MINE);
-        assertEquals(List.of(), ParamsFitter.onDisk(params, bot.resolve(ParamsFitter.STARTING), bot.resolve("b")),
+        assertEquals(List.of(), ParamsFitter.onDisk(LATEST, params, bot.resolve(ParamsFitter.STARTING), bot.resolve("b")),
                 "no starting copy at all: a bot loses no parameter");
         assertEquals(MINE, Files.readString(params.resolve(FILE)));
     }
