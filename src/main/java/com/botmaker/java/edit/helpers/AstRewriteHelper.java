@@ -5,6 +5,7 @@ import com.botmaker.java.parse.JavaLevel;
 import org.eclipse.jdt.core.dom.*;
 import org.eclipse.jdt.core.dom.rewrite.ASTRewrite;
 import org.eclipse.jdt.core.dom.rewrite.ListRewrite;
+import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.Document;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.text.edits.MalformedTreeException;
@@ -19,10 +20,22 @@ import java.util.List;
 public class AstRewriteHelper {
 
     /**
+     * A rewrite that could not be applied to the text it was handed (2026-11-05): its nodes' positions name another
+     * text, or two of its edits overlap. It used to be printed and the original text returned, which every caller read
+     * as an edit that changed nothing.
+     */
+    public static final class RewriteFailed extends IllegalStateException {
+        RewriteFailed(Exception cause) {
+            super("BotMaker could not write that change: " + cause.getMessage(), cause);
+        }
+    }
+
+    /**
      * Applies an ASTRewrite to source code and returns the modified code.
      * @param rewriter The ASTRewrite to apply
      * @param originalCode The original source code
-     * @return The modified code, or original code if rewrite fails
+     * @return The modified code
+     * @throws RewriteFailed when the rewrite cannot be applied to {@code originalCode}
      */
     public static String applyRewrite(ASTRewrite rewriter, String originalCode) {
         IDocument document = new Document(originalCode);
@@ -31,9 +44,8 @@ public class AstRewriteHelper {
             TextEdit edits = rewriter.rewriteAST(document, SourceFormatter.rewriteOptions(JavaLevel.of(rewriter.getAST())));
             edits.apply(document);
             return document.get();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return originalCode;
+        } catch (BadLocationException | RuntimeException failed) {
+            throw new RewriteFailed(failed);
         }
     }
 
@@ -63,9 +75,8 @@ public class AstRewriteHelper {
             edits.apply(document, TextEdit.UPDATE_REGIONS);
             document.replace(marker.getOffset(), 0, text);
             return document.get();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return originalCode;
+        } catch (BadLocationException | RuntimeException failed) {
+            throw new RewriteFailed(failed);
         }
     }
 

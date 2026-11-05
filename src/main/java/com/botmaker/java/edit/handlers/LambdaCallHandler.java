@@ -122,7 +122,8 @@ public final class LambdaCallHandler {
     // whole lambda rather than edit it: pairing a ListRewrite on PARAMETERS_PROPERTY with a
     // PARENTHESES_PROPERTY flip made JDT scan for tokens at offsets the parentheses change had invalidated,
     // and it threw "Document does not match the AST" off the end of the file — which AstRewriteHelper.
-    // applyRewrite catches, so the edit appeared to do nothing at all rather than to fail. And a body carried
+    // applyRewrite then caught, so the edit appeared to do nothing at all rather than to fail (it throws
+    // RewriteFailed since 2026-11-05). And a body carried
     // across must move by createCopyTarget, not copySubtree: the first moves the original source text, the
     // second re-prints it and reformats statements the user never touched.
     // AstRewriteHelper.renameLocal is the surviving path for a pure rename, and it carries the

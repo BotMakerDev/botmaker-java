@@ -7,6 +7,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- `AstRewriteHelper.applyRewrite` and `applyRewriteAndInsertAt` throw `RewriteFailed`, with a sentence and the cause,
+  when a rewrite cannot be applied to the text handed in (2026-11-05). They printed the stack trace and returned that
+  text, which every caller took for an edit that changed nothing.
+
 ### Added
 
 - `JavaValue.detached`: an expression read out of a file, copied into a tree of its own with its offsets moved onto its
