@@ -1,6 +1,12 @@
 package com.botmaker.java.edit.helpers;
 
+import com.botmaker.java.grammar.SourceParser;
+import com.botmaker.java.parse.JavaLevel;
+import com.botmaker.java.parse.SourceTokens;
+import org.eclipse.jdt.core.compiler.ITerminalSymbols;
 import org.eclipse.jdt.core.dom.*;
+
+import java.util.List;
 
 /**
  * Detects file and method types in the AST.
@@ -45,6 +51,61 @@ public class FileTypeDetector {
             return false;
         }
         return true;
+    }
+
+    /**
+     * Whether {@code method} is {@code public static void main(String[])}, or the {@code main()} a bot on Java 25
+     * may start from. Java 25 also starts a {@code main} neither public nor static; no bot's entry is written so.
+     */
+    public static boolean isJvmMain(MethodDeclaration method) {
+        int flags = method.getModifiers();
+        if (!MAIN_METHOD.equals(method.getName().getIdentifier()) || !Modifier.isPublic(flags)
+                || !Modifier.isStatic(flags) || !(method.getReturnType2() instanceof PrimitiveType primitive)
+                || primitive.getPrimitiveTypeCode() != PrimitiveType.VOID || method.parameters().size() > 1) {
+            return false;
+        }
+        if (method.parameters().isEmpty()) return true;
+        SingleVariableDeclaration only = (SingleVariableDeclaration) method.parameters().getFirst();
+        Type type = only.getType();
+        // String[] args, String args[] and String... args are the three ways to write it.
+        Type element = type instanceof ArrayType arrayType ? arrayType.getElementType() : type;
+        int dimensions = (type instanceof ArrayType arrayType ? arrayType.getDimensions() : 0)
+                + only.getExtraDimensions() + (only.isVarargs() ? 1 : 0);
+        String name = element.toString();
+        return dimensions == 1 && (name.equals("String") || name.equals("java.lang.String"));
+    }
+
+    /**
+     * Whether any class in {@code unit}, its member classes too, declares {@link #isJvmMain}. A file that does not
+     * parse may have lost the method from its tree, so {@code source}'s tokens answer for that one.
+     */
+    public static boolean holdsJvmMain(CompilationUnit unit, String source) {
+        boolean[] found = {false};
+        unit.accept(new ASTVisitor() {
+            @Override
+            public boolean visit(MethodDeclaration method) {
+                found[0] |= isJvmMain(method);
+                return false;
+            }
+        });
+        return found[0] || (SourceParser.hasSyntaxErrors(unit) && tokensSayMain(source));
+    }
+
+    /** Whether the tokens read {@code public static void main (}, in either order of the two modifiers. */
+    private static boolean tokensSayMain(String source) {
+        List<SourceTokens.Token> tokens = SourceTokens.of(JavaLevel.LATEST, source);
+        for (int i = 3; i + 1 < tokens.size(); i++) {
+            int first = tokens.get(i - 3).symbol();
+            int second = tokens.get(i - 2).symbol();
+            boolean modifiers = (first == ITerminalSymbols.TokenNamepublic && second == ITerminalSymbols.TokenNamestatic)
+                    || (first == ITerminalSymbols.TokenNamestatic && second == ITerminalSymbols.TokenNamepublic);
+            if (modifiers && tokens.get(i - 1).symbol() == ITerminalSymbols.TokenNamevoid
+                    && MAIN_METHOD.equals(tokens.get(i).text())
+                    && tokens.get(i + 1).symbol() == ITerminalSymbols.TokenNameLPAREN) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

@@ -9,6 +9,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- Reading through the tree (2026-11-05, clean-java phase 9): `NumberLiterals.typeName` is the one answer to a number
+  literal's type, so `0xE` and `0xFF` are `int`, where `ProjectAnalyzer` and `SignatureMigration` each called them
+  `double` or `float`. `ImportManager` reads a file with no tree yet from a parse of its text, so a line inside a text
+  block is no `package`. `FileTypeDetector.isJvmMain` (from `StatementPlacement`) and `holdsJvmMain` say where a bot
+  starts; `parse.SourceTokens` reads a file that does not parse, whose tree may have lost code.
 - `Precedence` also parenthesises a non-primary at a qualified name's qualifier, a method reference's receiver and an
   `outer.new` (2026-11-05): the `@Migrate` engine fills a rule's body through it.
 - `AstRewriteHelper.applyRewrite` and `applyRewriteAndInsertAt` throw `RewriteFailed`, with a sentence and the cause,

@@ -1,5 +1,6 @@
 package com.botmaker.java.edit.helpers;
 
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -51,6 +52,17 @@ public final class NumberLiterals {
         } catch (NumberFormatException | StringIndexOutOfBoundsException e) {
             return Optional.empty();
         }
+    }
+
+    /**
+     * The primitive type a number literal has, by its form: a hex integer's {@code d}, {@code e} and {@code f} are
+     * digits, so {@code 0xE} and {@code 0xFF} are {@code int}. The token is taken to be one JDT read as a literal.
+     */
+    public static String typeName(String token) {
+        String lower = token.toLowerCase(Locale.ROOT);
+        if (lower.endsWith("l")) return "long";
+        if (!isFloating(lower, lower.startsWith("0x"))) return "int";
+        return lower.endsWith("f") ? "float" : "double";
     }
 
     /**

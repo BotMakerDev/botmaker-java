@@ -4,6 +4,7 @@ import com.botmaker.java.edit.palette.FunctionDraft;
 import com.botmaker.java.edit.palette.Initializer;
 import com.botmaker.java.edit.palette.SignatureType;
 import com.botmaker.java.edit.helpers.AstRewriteHelper;
+import com.botmaker.java.edit.helpers.NumberLiterals;
 import com.botmaker.java.edit.refactor.MethodReferences.CallSite;
 import com.botmaker.java.types.ResolvedType;
 import com.botmaker.java.types.SlotFit;
@@ -31,7 +32,6 @@ import org.eclipse.jdt.core.dom.WhileStatement;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -443,23 +443,12 @@ public final class SignatureMigration {
             case StringLiteral ignored -> ResolvedType.named("java.lang.String");
             case BooleanLiteral ignored -> ResolvedType.BOOLEAN;
             case CharacterLiteral ignored -> ResolvedType.named("char");
-            case NumberLiteral literal -> numberType(literal);
+            case NumberLiteral literal -> ResolvedType.named(NumberLiterals.typeName(literal.getToken()));
             case ClassInstanceCreation creation -> ResolvedType.named(creation.getType().toString());
             case CastExpression cast -> ResolvedType.named(cast.getType().toString());
             case ParenthesizedExpression parens -> syntacticTypeOf(parens.getExpression());
             case SimpleName ignored -> ResolvedType.UNKNOWN;
             case null, default -> ResolvedType.UNKNOWN;
         };
-    }
-
-    /** {@code 1} is an int, {@code 1.5} a double — the suffix decides the rest. */
-    private static ResolvedType numberType(NumberLiteral literal) {
-        String token = literal.getToken().toLowerCase(Locale.ROOT);
-        if (token.endsWith("l")) return ResolvedType.named("long");
-        if (token.endsWith("f")) return ResolvedType.named("float");
-        if (token.endsWith("d") || token.contains(".") || token.contains("e")) {
-            return ResolvedType.named("double");
-        }
-        return ResolvedType.named("int");
     }
 }

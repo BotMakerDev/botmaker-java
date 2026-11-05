@@ -2,6 +2,7 @@ package com.botmaker.java.edit.helpers;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -15,6 +16,22 @@ class NumberLiteralsTest {
     void aLongLiteralIsALong() {
         assertEquals(Optional.of(60000L), NumberLiterals.value("60000L"));
         assertEquals(Optional.of(255L), NumberLiterals.value("0xFFL"));
+    }
+
+    @Test
+    void aSuffixDecidesOnlyForTheFormItBelongsTo() {
+        for (String token : List.of("1", "1_000", "010", "0xE", "0xFF", "0xD", "0X1f", "0b101")) {
+            assertEquals("int", NumberLiterals.typeName(token), token);
+        }
+        for (String token : List.of("1L", "1l", "0xFFL", "0b1L", "017L")) {
+            assertEquals("long", NumberLiterals.typeName(token), token);
+        }
+        for (String token : List.of("1f", "1.5F", "1e3f", "0x1p3f", "0x1.8p1F")) {
+            assertEquals("float", NumberLiterals.typeName(token), token);
+        }
+        for (String token : List.of("1d", "1.5", ".5", "1e3", "0x1p3", "0x1ep3", "0x1.8p1d")) {
+            assertEquals("double", NumberLiterals.typeName(token), token);
+        }
     }
 
     @Test

@@ -6,6 +6,7 @@ import com.botmaker.java.parse.SourceSet;
 import com.botmaker.java.index.LibraryType;
 import com.botmaker.java.index.LibraryIndex;
 import com.botmaker.java.edit.helpers.FileTypeDetector;
+import com.botmaker.java.edit.helpers.NumberLiterals;
 import org.eclipse.jdt.core.dom.*;
 
 import java.nio.file.Path;
@@ -757,7 +758,7 @@ public class ProjectAnalyzer {
             case StringLiteral ignored -> ResolvedType.named("java.lang.String");
             case BooleanLiteral ignored -> ResolvedType.BOOLEAN;
             case CharacterLiteral ignored -> ResolvedType.named("char");
-            case NumberLiteral literal -> numberLiteralType(literal);
+            case NumberLiteral literal -> ResolvedType.named(NumberLiterals.typeName(literal.getToken()));
             case InfixExpression infix -> infixType(infix);
             case PrefixExpression prefix ->
                     prefix.getOperator() == PrefixExpression.Operator.NOT
@@ -767,15 +768,6 @@ public class ProjectAnalyzer {
             // what the user means, so neither is offered as one.
             default -> ResolvedType.UNKNOWN;
         };
-    }
-
-    /** {@code 1} is an int, {@code 1.5} a double — the suffix decides the rest. */
-    private static ResolvedType numberLiteralType(NumberLiteral literal) {
-        String token = literal.getToken().toLowerCase(java.util.Locale.ROOT);
-        if (token.endsWith("l")) return ResolvedType.named("long");
-        if (token.endsWith("f")) return ResolvedType.named("float");
-        if (token.endsWith("d") || token.contains(".") || token.contains("e")) return ResolvedType.named("double");
-        return ResolvedType.named("int");
     }
 
     /** A comparison or a logical operator is a yes/no; arithmetic is left to the binding, if there ever is one. */
