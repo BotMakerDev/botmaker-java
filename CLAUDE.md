@@ -30,7 +30,10 @@ no state, no files and no UI: a caller passes text or trees and gets text or tre
 - `edit`: the rewrites of a unit: `EditContext`, `ImportManager`, `BlockId`, `factories` (`InitializerFactory`,
   `ExpressionFactory`), `handlers` and `helpers` (`AstRewriteHelper`, `LocalUses`); `guard`, whether an edit adds a
   compile error (`CompileGuard`) and the imports it leaves unused; `refactor` (`MethodReferences`, `ReviewMarks`);
-  `palette`, the kinds of block and expression an edit inserts.
+  `palette`, the kinds of block and expression an edit inserts, the catalogues that offer them and a function's
+  signature types (`BotType`, `SignatureType`, `FunctionDraft`); what reads the bound plugins' types takes the caller's
+  `ValueGrammar`, never a plugin registry. `StatementPlacement` says where a block may go; `refactor.SignatureMigration`
+  plans a signature change.
 
 ## Rules
 

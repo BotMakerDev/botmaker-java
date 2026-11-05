@@ -33,6 +33,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   which JDT's `ASTNode.copySubtree` refuses: a value built at the newest level lands in a bot on Java 25, and a text
   block in a bot before Java 15 is a plain literal. `JavaLayersTest`: only `JavaLevel` asks JDT for its newest Java
   or calls `copySubtree`.
+- The palette model (2026-11-05), moved from `botmaker-studio@b3a90cbe`: `edit.palette`'s `BotType`, `SignatureType`,
+  `SignatureTypes`, `FunctionDraft`, `EnumDraft`, `BlockCatalog` and `ExpressionCatalog`; `edit.StatementPlacement`,
+  `edit.helpers.MethodSignatures` and `edit.refactor.SignatureMigration`. What reads the bound plugins' types takes a
+  `ValueGrammar` (`BotType.values`, `SignatureTypes.of`, `typeOf`, `freshValue`, `MethodSignatures.draftOf`,
+  `signatureTypeOf`); a `SignatureType.Typed` carries the default text the grammar gave it when it was picked.
 
 ### Fixed
 

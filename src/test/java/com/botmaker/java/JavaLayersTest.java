@@ -18,7 +18,7 @@ class JavaLayersTest {
     private static final Path MAIN = Path.of("src/main/java");
     /** An import of anything but the JDK (its language model too, no UI), this module, the contract and JDT. */
     private static final Pattern ABOVE_THIS_MODULE = Pattern.compile(
-            "(?m)^import (static )?(?!(java|javax\\.lang\\.model|com\\.botmaker\\.java|com\\.botmaker\\.plugin\\.api"
+            "(?m)^import (static )?+(?!(java|javax\\.lang\\.model|com\\.botmaker\\.java|com\\.botmaker\\.plugin\\.api"
                     + "|org\\.eclipse)\\.)");
     private static final Pattern NEWEST_JAVA = Pattern.compile("getJLSLatest|latestSupportedJavaVersion");
 
