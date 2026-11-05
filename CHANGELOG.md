@@ -9,6 +9,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- Types compared as types (2026-11-05, clean-java phase 10): `grammar.TypeNodes` answers what a printed node used to.
+  `same` is `ParamsFitter`'s rule, moved; `writes` compares a node to a spelled type through its file's imports, type
+  arguments included; `names` asks for a class whatever its arguments; `isStringArray` takes every spelling of `main`'s
+  parameter. So `int x[]`, `int... x` and `int[] x` are one signature key, a bot's own `Duration` is carried rather than
+  read as `java.time.Duration`, `new ArrayList<String>()` keeps its arguments, and only `java.util.ArrayList` counts as
+  a list. `ResolvedType.ofWritten` names a type with no binding, so a bare `Integer` is a number. `SignatureType` has
+  `comparedName` (whole, from `ValueTypes.wholeName`), `Kept` gains it, and `MethodSignatures.signatureTypeOf` reads a
+  node or the chooser's `ResolvedType`.
 - Reading through the tree (2026-11-05, clean-java phase 9): `NumberLiterals.typeName` is the one answer to a number
   literal's type, so `0xE` and `0xFF` are `int`, where `ProjectAnalyzer` and `SignatureMigration` each called them
   `double` or `float`. `ImportManager` reads a file with no tree yet from a parse of its text, so a line inside a text

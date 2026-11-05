@@ -1,6 +1,7 @@
 package com.botmaker.java.edit.handlers;
 
 import com.botmaker.java.edit.EditContext;
+import com.botmaker.java.grammar.TypeNodes;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
@@ -93,7 +94,7 @@ public final class TryHandler {
 
     /** What a {@code catch} names, as written: {@code IOException | InterruptedException}. */
     public static String catchTypeText(CatchClause clause) {
-        return clause.getException().getType().toString().replaceAll("\\s*\\|\\s*", " | ");
+        return TypeNodes.written(clause.getException().getType());
     }
 
     /** {@code typeText} split at {@code |}, each part a (possibly qualified) Java name — or empty when one isn't. */

@@ -1,5 +1,7 @@
 package com.botmaker.java.edit.palette;
 
+import com.botmaker.java.grammar.ValueTypes;
+
 import java.lang.reflect.Type;
 import java.util.Optional;
 
@@ -23,6 +25,14 @@ public sealed interface SignatureType {
     /** How the type is written in source — {@code Point}, {@code List<Point>}, {@code Outcome}. */
     String sourceName();
 
+    /**
+     * The spelling to compare a file's type against: as whole as this type knows itself. A {@link Typed}'s
+     * {@link #sourceName()} is a label by simple names, and two classes may share it.
+     */
+    default String comparedName() {
+        return sourceName();
+    }
+
     /** A type the editor knows: it can be picked, defaulted, imported and swapped for another. */
     record Described(BotType.Choice choice) implements SignatureType {
         public Described {
@@ -35,11 +45,19 @@ public sealed interface SignatureType {
         }
     }
 
-    /** A type the editor only carries: shown, never offered, and written back unchanged. */
-    record Kept(String sourceName) implements SignatureType {
+    /**
+     * A type the editor only carries: shown, never offered, and written back unchanged. One the chooser picked by its
+     * simple name knows its whole name too, as {@code comparedName}.
+     */
+    record Kept(String sourceName, String comparedName) implements SignatureType {
         public Kept {
             sourceName = sourceName == null ? "" : sourceName.trim();
             if (sourceName.isEmpty()) throw new IllegalArgumentException("a kept type needs its source text");
+            comparedName = comparedName == null || comparedName.isBlank() ? sourceName : comparedName.trim();
+        }
+
+        public Kept(String sourceName) {
+            this(sourceName, sourceName);
         }
     }
 
@@ -58,6 +76,11 @@ public sealed interface SignatureType {
         @Override
         public String sourceName() {
             return TypeNames.label(type);
+        }
+
+        @Override
+        public String comparedName() {
+            return ValueTypes.wholeName(type);
         }
 
         /** The type is the identity: the default is what the grammar said at the pick, not part of what was picked. */

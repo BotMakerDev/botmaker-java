@@ -3,6 +3,7 @@ package com.botmaker.java.edit.helpers;
 import com.botmaker.java.grammar.SourceParser;
 import com.botmaker.java.parse.JavaLevel;
 import com.botmaker.java.parse.SourceTokens;
+import com.botmaker.java.grammar.TypeNodes;
 import org.eclipse.jdt.core.compiler.ITerminalSymbols;
 import org.eclipse.jdt.core.dom.*;
 
@@ -65,14 +66,7 @@ public class FileTypeDetector {
             return false;
         }
         if (method.parameters().isEmpty()) return true;
-        SingleVariableDeclaration only = (SingleVariableDeclaration) method.parameters().getFirst();
-        Type type = only.getType();
-        // String[] args, String args[] and String... args are the three ways to write it.
-        Type element = type instanceof ArrayType arrayType ? arrayType.getElementType() : type;
-        int dimensions = (type instanceof ArrayType arrayType ? arrayType.getDimensions() : 0)
-                + only.getExtraDimensions() + (only.isVarargs() ? 1 : 0);
-        String name = element.toString();
-        return dimensions == 1 && (name.equals("String") || name.equals("java.lang.String"));
+        return TypeNodes.isStringArray((SingleVariableDeclaration) method.parameters().getFirst());
     }
 
     /**

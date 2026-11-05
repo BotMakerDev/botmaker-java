@@ -6,17 +6,13 @@ import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTMatcher;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.Annotation;
-import org.eclipse.jdt.core.dom.ArrayType;
 import org.eclipse.jdt.core.dom.Block;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.ImportDeclaration;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.Modifier;
-import org.eclipse.jdt.core.dom.NameQualifiedType;
-import org.eclipse.jdt.core.dom.ParameterizedType;
 import org.eclipse.jdt.core.dom.PrimitiveType;
-import org.eclipse.jdt.core.dom.QualifiedType;
 import org.eclipse.jdt.core.dom.ReturnStatement;
 import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.core.dom.SimpleType;
@@ -175,7 +171,7 @@ public final class ParamsFitter {
         if (SourceParser.hasSyntaxErrors(startUnit) || SourceParser.hasSyntaxErrors(mineUnit)) return starting;
         MethodDeclaration start = parameters(startUnit).get(name);
         MethodDeclaration mine = parameters(mineUnit).get(name);
-        if (start == null || mine == null || !sameType(mine.getReturnType2(), start.getReturnType2())) {
+        if (start == null || mine == null || !TypeNodes.same(mine.getReturnType2(), start.getReturnType2())) {
             return starting;
         }
         Block body = mine.getBody();
@@ -225,7 +221,7 @@ public final class ParamsFitter {
                     continue;
                 }
                 Type oldType = rule.getReturnType2();
-                if (sameType(oldType, mine.getReturnType2()) && sameType(oldType, start.getReturnType2())) {
+                if (TypeNodes.same(oldType, mine.getReturnType2()) && TypeNodes.same(oldType, start.getReturnType2())) {
                     out.put(to.get(), from);
                 }
             }
@@ -321,7 +317,7 @@ public final class ParamsFitter {
             MethodDeclaration mine = mineMethods.get(from);
             if (mine == null) {
                 changes.add("added " + name + "()");
-            } else if (!sameType(mine.getReturnType2(), start.getReturnType2())
+            } else if (!TypeNodes.same(mine.getReturnType2(), start.getReturnType2())
                     || namesIn(mine.getBody()).stream().anyMatch(dropped::contains)) {
                 changes.add("reset " + name + "()");
             } else {
@@ -398,7 +394,7 @@ public final class ParamsFitter {
         return frames.safeSubtreeMatch(starting.getPackage(), params.getPackage())
                 && frames.safeSubtreeListMatch(starting.types(), params.types())
                 && startMethods.entrySet().stream().allMatch(each -> mineMethods.containsKey(each.getKey())
-                        && sameType(each.getValue().getReturnType2(), mineMethods.get(each.getKey()).getReturnType2()));
+                        && TypeNodes.same(each.getValue().getReturnType2(), mineMethods.get(each.getKey()).getReturnType2()));
     }
 
     /** A tree of {@code source} for comparing only, each {@code @Param.Kept} taken off. */
@@ -456,93 +452,6 @@ public final class ParamsFitter {
             }
         });
         return out;
-    }
-
-    /**
-     * Whether two types, each in its own file, are one type: each name resolved through its file's imports, so
-     * {@code a.Foo} and {@code b.Foo} differ while {@code java.time.Duration} and an imported {@code Duration} are
-     * one. A name its file does not import by name (an on-demand import, {@code java.lang}, its own package) is
-     * matched by what it spells, as the end of the other.
-     */
-    static boolean sameType(Type one, Type other) {
-        return switch (one) {
-            case ParameterizedType generic when other instanceof ParameterizedType theirs ->
-                    sameType(generic.getType(), theirs.getType())
-                            && sameTypes(generic.typeArguments(), theirs.typeArguments());
-            case ArrayType array when other instanceof ArrayType theirs ->
-                    array.getDimensions() == theirs.getDimensions()
-                            && sameType(array.getElementType(), theirs.getElementType());
-            case PrimitiveType primitive when other instanceof PrimitiveType theirs ->
-                    primitive.getPrimitiveTypeCode() == theirs.getPrimitiveTypeCode();
-            case null -> other == null;
-            default -> {
-                if (other == null) yield false;
-                Optional<Named> mine = named(one);
-                Optional<Named> theirs = named(other);
-                yield mine.isPresent() && theirs.isPresent() ? same(one, mine.get(), other, theirs.get())
-                        : one.subtreeMatch(new ASTMatcher(), other);
-            }
-        };
-    }
-
-    /**
-     * Two class names, each as its own file resolves it. A whole name against a simple one from a file with an
-     * on-demand import asks that file, so an imported {@code a.Foo} is not the {@code Foo} of {@code import b.*}.
-     * Otherwise the simple name is one its file never says, as in a starting copy that has not taken the value's
-     * import yet, and it matches by its last segments.
-     */
-    private static boolean same(Type one, Named mine, Type other, Named theirs) {
-        if (mine.whole() && theirs.whole()) return mine.name().equals(theirs.name());
-        if (mine.whole() && other instanceof SimpleType simple && importsOnDemand(other)) {
-            return SourceNames.refersTo(simple.getName(), mine.name());
-        }
-        if (theirs.whole() && one instanceof SimpleType simple && importsOnDemand(one)) {
-            return SourceNames.refersTo(simple.getName(), theirs.name());
-        }
-        return mine.name().equals(theirs.name()) || mine.name().endsWith("." + theirs.name())
-                || theirs.name().endsWith("." + mine.name());
-    }
-
-    private static boolean importsOnDemand(Type type) {
-        return type.getRoot() instanceof CompilationUnit unit && unit.imports().stream()
-                .anyMatch(each -> ((ImportDeclaration) each).isOnDemand() && !((ImportDeclaration) each).isStatic());
-    }
-
-    private static boolean sameTypes(List<?> one, List<?> other) {
-        if (one.size() != other.size()) return false;
-        for (int i = 0; i < one.size(); i++) {
-            if (!sameType((Type) one.get(i), (Type) other.get(i))) return false;
-        }
-        return true;
-    }
-
-    /** A class's name as written, and whether the file's imports made it whole. */
-    private record Named(String name, boolean whole) {}
-
-    /** {@code type}'s class name, its first segment resolved by a single-type import of its file; empty if no class. */
-    private static Optional<Named> named(Type type) {
-        String written = switch (type) {
-            case SimpleType simple -> simple.getName().getFullyQualifiedName();
-            case NameQualifiedType qualified -> qualified.getQualifier().getFullyQualifiedName() + "."
-                    + qualified.getName().getIdentifier();
-            case QualifiedType qualified when qualified.getQualifier() instanceof SimpleType outer ->
-                    outer.getName().getFullyQualifiedName() + "." + qualified.getName().getIdentifier();
-            default -> null;
-        };
-        if (written == null) return Optional.empty();
-        int dot = written.indexOf('.');
-        String first = dot < 0 ? written : written.substring(0, dot);
-        if (type.getRoot() instanceof CompilationUnit unit) {
-            for (Object each : unit.imports()) {
-                ImportDeclaration imported = (ImportDeclaration) each;
-                String name = imported.getName().getFullyQualifiedName();
-                if (!imported.isOnDemand() && !imported.isStatic() && name.endsWith("." + first)) {
-                    return Optional.of(new Named(name + written.substring(first.length()), true));
-                }
-            }
-        }
-        // A name written whole starts with its package, in lower case: java.time.Duration.
-        return Optional.of(new Named(written, dot > 0 && Character.isLowerCase(first.charAt(0))));
     }
 
     /** Every Java file under {@code root}, keyed by its path relative to it. */

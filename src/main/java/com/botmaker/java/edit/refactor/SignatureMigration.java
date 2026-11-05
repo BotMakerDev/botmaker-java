@@ -404,12 +404,12 @@ public final class SignatureMigration {
         }
         if (location == VariableDeclarationFragment.INITIALIZER_PROPERTY
                 && parent.getParent() instanceof VariableDeclarationStatement declaration) {
-            return ResolvedType.named(declaration.getType().toString());
+            return ResolvedType.ofWritten(declaration.getType());
         }
         if (location == ReturnStatement.EXPRESSION_PROPERTY) {
             MethodDeclaration enclosing = enclosingMethodOf(parent);
             if (enclosing != null && enclosing.getReturnType2() != null) {
-                return ResolvedType.named(enclosing.getReturnType2().toString());
+                return ResolvedType.ofWritten(enclosing.getReturnType2());
             }
         }
         return null;
@@ -444,8 +444,8 @@ public final class SignatureMigration {
             case BooleanLiteral ignored -> ResolvedType.BOOLEAN;
             case CharacterLiteral ignored -> ResolvedType.named("char");
             case NumberLiteral literal -> ResolvedType.named(NumberLiterals.typeName(literal.getToken()));
-            case ClassInstanceCreation creation -> ResolvedType.named(creation.getType().toString());
-            case CastExpression cast -> ResolvedType.named(cast.getType().toString());
+            case ClassInstanceCreation creation -> ResolvedType.ofWritten(creation.getType());
+            case CastExpression cast -> ResolvedType.ofWritten(cast.getType());
             case ParenthesizedExpression parens -> syntacticTypeOf(parens.getExpression());
             case SimpleName ignored -> ResolvedType.UNKNOWN;
             case null, default -> ResolvedType.UNKNOWN;

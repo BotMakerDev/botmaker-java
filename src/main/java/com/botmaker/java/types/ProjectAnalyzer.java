@@ -1,6 +1,7 @@
 package com.botmaker.java.types;
 
 import com.botmaker.java.grammar.SourceParser;
+import com.botmaker.java.grammar.TypeNodes;
 import com.botmaker.java.parse.JavaLevel;
 import com.botmaker.java.parse.SourceSet;
 import com.botmaker.java.index.LibraryType;
@@ -271,7 +272,7 @@ public class ProjectAnalyzer {
     public static ResolvedType resolveType(Type type) {
         if (type == null) return ResolvedType.UNKNOWN;
         ITypeBinding b = type.resolveBinding();
-        return b != null ? ResolvedType.of(b) : ResolvedType.named(type.toString());
+        return b != null ? ResolvedType.of(b) : ResolvedType.ofWritten(type);
     }
 
     /** Resolves the type of an expression from its binding. */
@@ -1135,7 +1136,7 @@ public class ProjectAnalyzer {
         boolean isContainer = false;
 
         if (expr instanceof ClassInstanceCreation cic) {
-            if (cic.getType().toString().startsWith("ArrayList") && !cic.arguments().isEmpty()) {
+            if (TypeNodes.names(cic.getType(), JdkType.ARRAY_LIST.qualifiedName()) && !cic.arguments().isEmpty()) {
                 isContainer = true;
                 collectLeafValues((Expression) cic.arguments().getFirst(), accumulator);
             }

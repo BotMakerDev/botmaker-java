@@ -3,9 +3,12 @@ package com.botmaker.java.edit.helpers;
 import com.botmaker.java.edit.palette.BotType;
 import com.botmaker.java.edit.palette.FunctionDraft;
 import com.botmaker.java.edit.palette.SignatureType;
+import com.botmaker.java.grammar.TypeNodes;
 import com.botmaker.java.grammar.ValueGrammar;
+import com.botmaker.java.types.ResolvedType;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
+import org.eclipse.jdt.core.dom.Type;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 
 import java.util.ArrayList;
@@ -43,7 +46,7 @@ public final class MethodSignatures {
     public static String keyOf(MethodDeclaration method) {
         List<String> types = new ArrayList<>();
         for (Object parameter : method.parameters()) {
-            types.add(((SingleVariableDeclaration) parameter).getType().toString());
+            types.add(TypeNodes.written((SingleVariableDeclaration) parameter));
         }
         return FunctionDraft.signatureKey(method.getName().getIdentifier(), types);
     }
@@ -63,7 +66,7 @@ public final class MethodSignatures {
     public static Optional<FunctionDraft> draftOf(MethodDeclaration method, ValueGrammar grammar) {
         SignatureType returnType = method.getReturnType2() == null
                 ? SignatureType.of(BotType.NOTHING)
-                : signatureTypeOf(method.getReturnType2().toString(), grammar);
+                : signatureTypeOf(method.getReturnType2(), grammar);
 
         List<FunctionDraft.Parameter> parameters = new ArrayList<>();
         for (int i = 0; i < method.parameters().size(); i++) {
@@ -71,15 +74,14 @@ public final class MethodSignatures {
             // Varargs and arrays are the two that genuinely cannot round-trip: the {@code …} and the
             // {@code []} are spelled outside the type node (and `String args[]` puts them on the name), so
             // carrying the type text alone would quietly drop them.
-            if (declaration.isVarargs() || declaration.getExtraDimensions() > 0
-                    || declaration.getType().toString().endsWith("[]")) {
+            if (declaration.isVarargs() || declaration.getExtraDimensions() > 0 || declaration.getType().isArrayType()) {
                 return Optional.empty();
             }
             // Stamped with the index it holds here: this draft is what the dialog opens on, and the rows the
             // user then moves, renames or deletes carry the stamp back out — so the write knows which
             // parameter each row *is*, not merely where it ended up.
             parameters.add(new FunctionDraft.Parameter(declaration.getName().getIdentifier(),
-                    signatureTypeOf(declaration.getType().toString(), grammar), i));
+                    signatureTypeOf(declaration.getType(), grammar), i));
         }
         return Optional.of(new FunctionDraft(method.getName().getIdentifier(), returnType, parameters));
     }
@@ -96,6 +98,28 @@ public final class MethodSignatures {
         return BotType.Choice.fromSourceName(sourceName, grammar)
                 .<SignatureType>map(SignatureType::of)
                 .orElseGet(() -> SignatureType.kept(sourceName));
+    }
+
+    /**
+     * The curated choice {@code node} really names, or the type carried as its file writes it. A class of the bot's
+     * that shares a simple name with a catalogue type is that class, and is carried.
+     */
+    public static SignatureType signatureTypeOf(Type node, ValueGrammar grammar) {
+        String written = TypeNodes.written(node);
+        return BotType.Choice.fromSourceName(written, grammar)
+                .filter(choice -> TypeNodes.writes(node, choice.sourceName()))
+                .<SignatureType>map(SignatureType::of)
+                .orElseGet(() -> SignatureType.kept(written));
+    }
+
+    /**
+     * What the type chooser's pick is: the curated choice of its simple name, or the type carried by that simple name
+     * and compared by its whole one, so that picking {@code b.Point} over a written {@code a.Point} is a change.
+     */
+    public static SignatureType signatureTypeOf(ResolvedType picked, ValueGrammar grammar) {
+        return BotType.Choice.fromSourceName(picked.simpleName(), grammar)
+                .<SignatureType>map(SignatureType::of)
+                .orElseGet(() -> new SignatureType.Kept(picked.simpleName(), picked.qualifiedName()));
     }
 
     /**
@@ -118,7 +142,7 @@ public final class MethodSignatures {
                 return Optional.of("the input \"" + name + "\" takes any number of values, which the editor "
                         + "cannot describe");
             }
-            if (declaration.getExtraDimensions() > 0 || declaration.getType().toString().endsWith("[]")) {
+            if (declaration.getExtraDimensions() > 0 || declaration.getType().isArrayType()) {
                 return Optional.of("the input \"" + name + "\" is an array, which the editor cannot describe");
             }
         }

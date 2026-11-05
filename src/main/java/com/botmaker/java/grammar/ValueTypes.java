@@ -199,12 +199,21 @@ public final class ValueTypes {
      * boxed inside angle brackets and only there.
      */
     public static String sourceName(Type type) {
+        return spelled(type, false);
+    }
+
+    /** {@code type} with every class by its canonical name, to compare it with what a file names: {@code java.time.Duration}. */
+    public static String wholeName(Type type) {
+        return spelled(type, true);
+    }
+
+    private static String spelled(Type type, boolean whole) {
         return switch (type) {
-            case Class<?> cls -> JavaNames.simple(cls);
+            case Class<?> cls -> whole ? JavaNames.canonical(cls) : JavaNames.simple(cls);
             case Unknown unknown -> unknown.written();
             case Parameterized parameterized -> JavaNames.canonical(parameterized.raw())
-                    + typeArguments(parameterized.arguments());
-            case BotClass bot -> bot.qualifiedName() + typeArguments(bot.arguments());
+                    + typeArguments(parameterized.arguments(), whole);
+            case BotClass bot -> bot.qualifiedName() + typeArguments(bot.arguments(), whole);
             case null -> "";
             default -> type.getTypeName();
         };
@@ -302,15 +311,15 @@ public final class ValueTypes {
         for (Type argument : arguments(type)) collect(argument, out);
     }
 
-    private static String typeArguments(List<Type> arguments) {
+    private static String typeArguments(List<Type> arguments, boolean whole) {
         if (arguments.isEmpty()) return "";
         StringBuilder out = new StringBuilder("<");
         for (int i = 0; i < arguments.size(); i++) {
             if (i > 0) out.append(", ");
             Type argument = arguments.get(i);
-            out.append(argument instanceof Class<?> cls && cls.isPrimitive()
-                    ? JavaNames.simple(java.lang.invoke.MethodType.methodType(cls).wrap().returnType())
-                    : sourceName(argument));
+            out.append(spelled(argument instanceof Class<?> cls && cls.isPrimitive()
+                    ? java.lang.invoke.MethodType.methodType(cls).wrap().returnType()
+                    : argument, whole));
         }
         return out.append('>').toString();
     }

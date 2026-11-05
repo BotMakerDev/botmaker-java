@@ -1,8 +1,10 @@
 package com.botmaker.java.types;
 
+import com.botmaker.java.grammar.TypeNodes;
 import com.botmaker.java.index.LibraryType;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.IVariableBinding;
+import org.eclipse.jdt.core.dom.Type;
 
 import java.util.Arrays;
 import java.util.List;
@@ -151,6 +153,20 @@ public sealed interface ResolvedType
     }
 
     /** Routes primitive names to {@link Primitive}, blanks to {@link #UNKNOWN}, else {@link Named}. */
+    /**
+     * The type a file writes, when it has no bindings: a single-type import makes a class whole, and a name of
+     * {@code java.lang} the language knows is whole too, so {@code Integer} counts as a number. Any other simple name
+     * stays as written.
+     */
+    static ResolvedType ofWritten(Type node) {
+        return named(TypeNodes.resolvedName(node, ResolvedType::inJavaLang));
+    }
+
+    private static String inJavaLang(String name) {
+        return JdkType.bySimpleName(name).filter(known -> "java.lang".equals(known.packageName()))
+                .map(JdkType::qualifiedName).orElse(name);
+    }
+
     static ResolvedType named(String qualifiedName) {
         if (qualifiedName == null || qualifiedName.isBlank()) return UNKNOWN;
         String t = qualifiedName.trim();

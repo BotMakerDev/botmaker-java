@@ -4,6 +4,7 @@ import com.botmaker.java.edit.EditContext;
 import com.botmaker.java.edit.factories.InitializerFactory;
 import com.botmaker.java.types.ResolvedType;
 import com.botmaker.java.types.ProjectAnalyzer;
+import com.botmaker.java.grammar.TypeNodes;
 import org.eclipse.jdt.core.dom.*;
 import org.eclipse.jdt.core.dom.rewrite.ListRewrite;
 
@@ -16,7 +17,10 @@ public class InstantiationHandler {
                                              ResolvedType newType,
                                              List<ResolvedType> newParamTypes) {
 
-        if (newType != null && !newType.simpleName().equals(node.getType().toString())) {
+        // A class named with no type arguments asks only for the class, so `new ArrayList<String>()` keeps its own.
+        if (newType != null && !(newType.qualifiedName().indexOf('<') < 0
+                ? TypeNodes.names(node.getType(), newType.qualifiedName())
+                : TypeNodes.writes(node.getType(), newType.qualifiedName()))) {
             Type newTypeNode = ProjectAnalyzer.createTypeNode(ctx.ast(), newType);
             ctx.rewriter().replace(node.getType(), newTypeNode, null);
             ctx.addImportForType(newType);
