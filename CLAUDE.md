@@ -39,8 +39,12 @@ no state, no files and no UI: a caller passes text or trees and gets text or tre
 
 ## Rules
 
-- Write Java with JDT trees, never strings or templates.
+- Write Java with JDT trees, never strings or templates. Three places may hold Java as text: a comment
+  (`edit.helpers.CommentText` makes text from outside the program safe in one), a method restored exactly as written,
+  and the generated ▶ Try class. A check on raw text may only be a reason not to parse, never the answer; a file that
+  does not parse is read by `parse.SourceTokens`, because JDT's recovery drops code.
+- Compare a written type with `grammar.TypeNodes`, never by what a node prints.
 - Imports nothing above it: no `javafx`, Studio, core, plugin-host, SDK or cli (`JavaLayersTest`).
 - `botmaker-studio-api` stays `provided`: a contract class must be one `Class` object across the plugin boundary.
-- JDT is a plain dependency. A host that must not download it, such as plugin-host and the cli's main jar, declares
-  this module `optional`.
+- JDT is a plain dependency, and this pom is the only one that names its version. A host that must not download it,
+  such as plugin-host and the cli's main jar, declares this module `optional`.

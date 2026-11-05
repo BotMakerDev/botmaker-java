@@ -9,6 +9,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- This pom is the only one that names JDT's version (2026-11-05): the cli and Studio dropped their own declarations.
 - Types compared as types (2026-11-05, clean-java phase 10): `grammar.TypeNodes` answers what a printed node used to.
   `same` is `ParamsFitter`'s rule, moved; `writes` compares a node to a spelled type through its file's imports, type
   arguments included; `names` asks for a class whatever its arguments; `isStringArray` takes every spelling of `main`'s
