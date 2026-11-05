@@ -92,7 +92,7 @@ public class ProjectAnalyzer {
 
     /**
      * The library index this analyzer reads, or {@code null} in a test — for a caller that builds a second
-     * analyzer over a staged copy of the state (the assistant's {@code AssistWorkspace}).
+     * analyzer over a staged copy of the state (the core's {@code EditWorkspace}).
      */
     public LibraryIndex libraryIndex() {
         return libraryIndex;
