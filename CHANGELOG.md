@@ -9,6 +9,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- `Precedence` also parenthesises a non-primary at a qualified name's qualifier, a method reference's receiver and an
+  `outer.new` (2026-11-05): the `@Migrate` engine fills a rule's body through it.
 - `AstRewriteHelper.applyRewrite` and `applyRewriteAndInsertAt` throw `RewriteFailed`, with a sentence and the cause,
   when a rewrite cannot be applied to the text handed in (2026-11-05). They printed the stack trace and returned that
   text, which every caller took for an edit that changed nothing.

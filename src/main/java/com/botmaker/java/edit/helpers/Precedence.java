@@ -10,6 +10,7 @@ import org.eclipse.jdt.core.dom.CharacterLiteral;
 import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.ConditionalExpression;
 import org.eclipse.jdt.core.dom.Expression;
+import org.eclipse.jdt.core.dom.ExpressionMethodReference;
 import org.eclipse.jdt.core.dom.FieldAccess;
 import org.eclipse.jdt.core.dom.InfixExpression;
 import org.eclipse.jdt.core.dom.InstanceofExpression;
@@ -22,6 +23,7 @@ import org.eclipse.jdt.core.dom.ParenthesizedExpression;
 import org.eclipse.jdt.core.dom.PatternInstanceofExpression;
 import org.eclipse.jdt.core.dom.PostfixExpression;
 import org.eclipse.jdt.core.dom.PrefixExpression;
+import org.eclipse.jdt.core.dom.QualifiedName;
 import org.eclipse.jdt.core.dom.StringLiteral;
 import org.eclipse.jdt.core.dom.SuperFieldAccess;
 import org.eclipse.jdt.core.dom.SuperMethodInvocation;
@@ -65,6 +67,9 @@ public final class Precedence {
             case FieldAccess access -> access.getExpression() == replaced;
             case MethodInvocation call -> call.getExpression() == replaced;
             case ArrayAccess access -> access.getArray() == replaced;
+            case QualifiedName qualified -> qualified.getQualifier() == replaced;
+            case ExpressionMethodReference reference -> reference.getExpression() == replaced;
+            case ClassInstanceCreation creation -> creation.getExpression() == replaced;
             case ConditionalExpression conditional -> conditional.getExpression() == replaced
                     ? replacement instanceof ConditionalExpression || replacement instanceof Assignment
                             || replacement instanceof LambdaExpression
