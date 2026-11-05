@@ -9,6 +9,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- `JavaValue.detached`: an expression read out of a file, copied into a tree of its own with its offsets moved onto its
+  own text, so a value kept past the file's parse pins neither the file's tree nor its text, and still shows each part
+  as written. `JavaValue.written()` hands that text on whenever the node's offsets index it (2026-11-05).
+
 - The module (2026-11-04): the value grammar and `SourceParser` moved from `botmaker-plugin-host`
   (`com.botmaker.plugin.host.grammar` is now `com.botmaker.java.grammar`), with their history at
   `botmaker-plugin-host@df71893`. `JavaLayersTest` keeps it free of UI and hosts, with one parser.

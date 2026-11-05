@@ -3,6 +3,8 @@ package com.botmaker.java.grammar;
 import com.botmaker.java.parse.JavaLevel;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTMatcher;
+import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.Expression;
 
 import java.util.Collection;
@@ -49,6 +51,27 @@ public record JavaValue(Expression node, List<String> imports, String source) {
     }
 
     /**
+     * {@link #kept}, but detached from the file it was read out of (2026-11-05): the node is copied into a tree of its
+     * own, its offsets moved to index {@link #source()}, so the value pins no file's tree or text and still reads as
+     * written ({@link #written()}). Copied, never parsed again. What a value held past its file's parse uses.
+     */
+    public static JavaValue detached(SourceNode written) {
+        Expression node = written.node();
+        String source = written.source();
+        int base = node.getStartPosition();
+        Expression copy = JavaLevel.copy(JavaLevel.of(node).newAst(), node);
+        copy.accept(new ASTVisitor(true) {
+            @Override
+            public void preVisit(ASTNode child) {
+                if (child.getStartPosition() >= base) {
+                    child.setSourceRange(child.getStartPosition() - base, child.getLength());
+                }
+            }
+        });
+        return new JavaValue(copy, List.of(), source);
+    }
+
+    /**
      * Source that is already some file's text, as a value to write back — the Java a row was snapshotted
      * with. Empty unless it is exactly one expression.
      */
@@ -64,9 +87,14 @@ public record JavaValue(Expression node, List<String> imports, String source) {
         return JavaLevel.copy(ast, node);
     }
 
-    /** {@link #node()} as the grammar reads it, over the text it is shown as. */
+    /**
+     * {@link #node()} as the grammar reads it, over the text it is shown as: {@link #source()} when the node's offsets
+     * index it (a {@link #detached} value, or one parsed from exactly its text), so a part shows as written; otherwise
+     * none, and a part shows as JDT prints it.
+     */
     public SourceNode written() {
-        return new SourceNode(node, null);
+        boolean indexesSource = node.getStartPosition() == 0 && node.getLength() == source.length();
+        return new SourceNode(node, indexesSource ? source : null);
     }
 
     /**
