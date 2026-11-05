@@ -17,6 +17,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- `edit.helpers.CommentText` (2026-11-05): text written so it stays a comment. `written` gives a line or block comment;
+  `inside` makes text safe in a block or doc comment. `*/` becomes `* /` and `\u` becomes `\ u`, the only changes.
 - `JavaValue.detached`: an expression read out of a file, copied into a tree of its own with its offsets moved onto its
   own text, so a value kept past the file's parse pins neither the file's tree nor its text, and still shows each part
   as written. `JavaValue.written()` hands that text on whenever the node's offsets index it (2026-11-05).
