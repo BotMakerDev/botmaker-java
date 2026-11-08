@@ -7,6 +7,7 @@ import com.botmaker.plugin.api.value.Wither;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.Expression;
+import org.eclipse.jdt.core.dom.LambdaExpression;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.Name;
 
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 
 /**
  * The write half of {@link ValueGrammar}: a value as a JDT expression <em>tree</em>, built node by node.
@@ -125,6 +127,7 @@ final class ValueWriter {
         Optional<Expression> named = names.botName(value);
         if (named.isPresent()) return named;
         if (type == null) return any(value, names);
+        if (type == Supplier.class && value instanceof Supplier<?> lazy) return lazily(lazy, names);
         if (JdkLiterals.handles(type)) return JdkLiterals.node(names.ast, type, value);
         if (grammar.canonical(type) != null) {
             ComponentType<?> component = grammar.writerOf(type, value);
@@ -140,6 +143,25 @@ final class ValueWriter {
             return SourceNode.parse(source).map(node -> JavaValue.kept(node).copyInto(names.ast));
         }
         return type.isInstance(value) ? any(value, names) : Optional.empty();
+    }
+
+    /**
+     * A {@code Supplier} part, {@code () -> Screens.ARENA.fight}: what it answers, written as the body of a lambda that
+     * takes nothing (2026-11-06). Its value names a thing the bot declares later than the value naming it.
+     */
+    private Optional<Expression> lazily(Supplier<?> lazy, Names names) {
+        Object answer;
+        try {
+            answer = lazy.get();
+        } catch (RuntimeException unanswered) {
+            return Optional.empty();
+        }
+        return any(answer, names).map(body -> {
+            LambdaExpression lambda = names.ast.newLambdaExpression();
+            lambda.setParentheses(true);
+            lambda.setBody(body);
+            return lambda;
+        });
     }
 
     /** {@code value} by its own runtime class — the untyped counterpart of reading by spelling. */
@@ -226,17 +248,23 @@ final class ValueWriter {
             Object part = parts.get(fixed + i);
             if (Objects.equals(part, madeParts.get(fixed + i))) continue;
             Wither<?> wither = withers.get(i);
-            Optional<Expression> argument = Optional.empty();
+            List<Expression> written = new ArrayList<>();
             if (wither.flag()) {
                 if (!Boolean.TRUE.equals(part)) continue;
+            } else if (wither.spread()) {
+                // A varargs link, .serves(A, B): each element an argument; one that cannot be written drops the link.
+                if (!(part instanceof List<?> elements) || elements.isEmpty()) continue;
+                for (Object element : elements) ofClass(wither.elementType(), element, names).ifPresent(written::add);
+                if (written.size() != elements.size()) continue;
             } else {
-                argument = ofClass(wither.partType(), part, names);
+                Optional<Expression> argument = ofClass(wither.partType(), part, names);
                 if (argument.isEmpty()) continue;
+                written.add(argument.get());
             }
             MethodInvocation link = names.ast.newMethodInvocation();
             link.setExpression(chain);
             link.setName(names.ast.newSimpleName(wither.method().getName()));
-            argument.ifPresent(arguments(link)::add);
+            arguments(link).addAll(written);
             chain = link;
         }
         return Optional.of(chain);

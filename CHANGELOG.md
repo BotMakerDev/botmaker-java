@@ -7,6 +7,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- The grammar reads and writes what a plan is made of (2026-11-06). A varargs link reads its arguments into one list
+  part and writes each back. A `Supplier` part reads `() -> expr` as the value it gives, read when asked, and writes
+  back as the same lambda. An interface or abstract class with no canonical shape, such as `Goal` or `Retry`, reads by
+  the calls that build its kinds. When several links share a name, a part kept as source goes to the first wither that
+  takes it, so `.needs(Firestone::eventOn)` is a condition, not a goal.
+
 ### Changed
 
 - This pom is the only one that names JDT's version (2026-11-05): the cli and Studio dropped their own declarations.

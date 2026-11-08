@@ -6,6 +6,7 @@ import com.botmaker.plugin.api.value.Wither;
 import org.eclipse.jdt.core.dom.ClassInstanceCreation;
 import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.FieldAccess;
+import org.eclipse.jdt.core.dom.LambdaExpression;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.Name;
 import org.eclipse.jdt.core.dom.ParenthesizedExpression;
@@ -19,10 +20,11 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Supplier;
 
 /**
  * The read half of {@link ValueGrammar}, over a parsed expression rather than its text.
@@ -114,7 +116,10 @@ final class ExpressionReader {
     private Optional<Object> readDeclared(Class<?> cls, SourceNode node) {
         if (JdkLiterals.handles(cls)) return jdk(cls, node);
         PluginType<?> type = grammar.declaration(cls);
-        if (type == null && grammar.canonical(cls) == null) return Optional.empty();
+        // An interface no call builds itself is read by the calls that build its kinds: a Goal as Goal.of or Goal.done.
+        if (type == null && grammar.canonical(cls) == null) {
+            return builtAsKind(cls) ? value(node, cls, true) : Optional.empty();
+        }
         Optional<Object> read = value(node, cls, true);
         // A declared type nothing writes, such as an interface no call here constructs, crosses as written.
         if (read.isPresent() || type == null || cls.isEnum() || grammar.canonical(cls) != null) return read;
@@ -124,12 +129,37 @@ final class ExpressionReader {
     /** One part of a call, read as the class its declaration gives it. */
     private Optional<Object> readPart(Class<?> type, SourceNode node) {
         if (type == null || isHostContainer(type)) return readAny(node);
+        if (type == Supplier.class) {
+            Optional<Object> lazy = lazily(node);
+            if (lazy.isPresent()) return lazy;
+        }
         if (JdkLiterals.handles(type)) return jdk(type, node);
         Optional<Object> read = value(node, type, true);
         if (read.isPresent() || type.isEnum() || grammar.canonical(type) != null) return read;
         // The plugin said this part is a type nothing here writes — a flow's Collect::body — so it crosses
         // as it is written.
         return Optional.of(node.source());
+    }
+
+    /**
+     * A {@code Supplier} part written {@code () -> Screens.ARENA.fight}: a supplier answering what its body reads as,
+     * by spelling (2026-11-06); empty for any other lambda, or a body that reads as nothing, which then crosses as it
+     * is written.
+     */
+    private Optional<Object> lazily(SourceNode node) {
+        if (!(unwrap(node.node()) instanceof LambdaExpression lambda) || !lambda.parameters().isEmpty()
+                || !(lambda.getBody() instanceof Expression body)) {
+            return Optional.empty();
+        }
+        return readAny(node.child(body)).map(Lazily::new);
+    }
+
+    /** What a {@code () -> …} part reads as: it answers the value its body names, and equals another answering it. */
+    record Lazily(Object value) implements Supplier<Object> {
+        @Override
+        public Object get() {
+            return value;
+        }
     }
 
     /**
@@ -236,13 +266,11 @@ final class ExpressionReader {
     private Optional<Object> linked(Call call, SourceNode node, boolean bare) {
         List<? extends Wither<?>> withers = ValueGrammar.withersOf(call.component());
         if (withers.isEmpty()) return Optional.empty();
-        Map<Integer, MethodInvocation> links = new LinkedHashMap<>();
+        List<MethodInvocation> links = new ArrayList<>();
         Expression at = unwrap(node.node());
         while (at instanceof MethodInvocation invocation && invocation.getExpression() != null) {
-            int index = witherOf(withers, invocation);
-            if (index < 0) break;
-            // A part set twice is a chain no writer made, and which one counts is the bot's runtime's to say.
-            if (links.putIfAbsent(index, invocation) != null) return Optional.empty();
+            if (witherOf(withers, invocation) < 0) break;
+            links.add(invocation);
             at = unwrap(invocation.getExpression());
         }
         if (links.isEmpty()) return Optional.empty();
@@ -258,30 +286,55 @@ final class ExpressionReader {
         }
         int fixed = parts.size() - withers.size();
         if (fixed < 0) return Optional.empty();
-        for (Map.Entry<Integer, MethodInvocation> link : links.entrySet()) {
-            int index = link.getKey();
+        Set<Integer> set = new HashSet<>();
+        for (MethodInvocation link : links) {
+            int index = witherOf(withers, link);
             Wither<?> wither = withers.get(index);
             Object part = Boolean.TRUE;
             if (!wither.flag()) {
                 // One link name may be several withers, one per part type — .whenOff(Class), .whenOff(Flow)
-                // (2026-10-12): the first whose part reads as a value is the one written. A part kept as its
-                // source is the last resort, the first wither's, since another may read it as a value.
-                SourceNode argument = node.child(arguments(link.getValue()).getFirst());
+                // (2026-10-12), .needs(Goal...), .needs(Condition...) (2026-11-06): the first whose part reads as
+                // a value is the one written. A part kept as its source is the last resort, since another may read
+                // it as a value: the first wither that takes the text, else the first wither's.
                 Optional<Object> read = Optional.empty();
+                Optional<Object> kept = Optional.empty();
+                int keptAt = index;
                 for (int i = index; i < withers.size() && read.isEmpty(); i++) {
                     Wither<?> each = withers.get(i);
-                    if (each.flag() || !each.method().getName().equals(wither.method().getName())) continue;
-                    Optional<Object> candidate = readPart(each.partType(), argument);
-                    boolean asSource = candidate.isPresent() && candidate.get() instanceof String
-                            && !each.partType().isAssignableFrom(String.class);
-                    if (candidate.isPresent() && !asSource) {
+                    if (each.flag() || !each.method().getName().equals(wither.method().getName())
+                            || !takes(each, link)) {
+                        continue;
+                    }
+                    Optional<Object> candidate = linkPart(each, node, link);
+                    if (candidate.isEmpty()) continue;
+                    if (!asSource(each, candidate.get())) {
                         read = candidate;
                         index = i;
+                    } else if (kept.isEmpty() && accepts(each, made.get(), candidate.get())) {
+                        kept = candidate;
+                        keptAt = i;
                     }
                 }
-                if (read.isEmpty()) read = readPart(wither.partType(), argument);
+                if (read.isEmpty() && kept.isPresent()) {
+                    read = kept;
+                    index = keptAt;
+                }
+                if (read.isEmpty()) read = linkPart(wither, node, link);
                 if (read.isEmpty()) return Optional.empty();
                 part = read.get();
+            }
+            // A varargs link written twice, .serves(A).serves(B), adds to what it holds, as each call does at run
+            // time; it is written back as one. Any other part set twice is a chain no writer made, and which one
+            // counts is the bot's runtime's to say.
+            if (!set.add(index)) {
+                if (!withers.get(index).spread() || !(parts.get(fixed + index) instanceof List<?> before)
+                        || !(part instanceof List<?> more)) {
+                    return Optional.empty();
+                }
+                // The chain is read from its last call in: this call came before the one already read.
+                List<Object> both = new ArrayList<>(more);
+                both.addAll(before);
+                part = Collections.unmodifiableList(both);
             }
             parts.set(fixed + index, part);
         }
@@ -292,15 +345,49 @@ final class ExpressionReader {
         }
     }
 
+    /** Whether {@code wither} builds a value of {@code part} — a part kept as text that its holder turns into one. */
+    private static boolean accepts(Wither<?> wither, Object value, Object part) {
+        try {
+            return wither.applyTo(value, part) != null;
+        } catch (RuntimeException | LinkageError e) {
+            return false;
+        }
+    }
+
     /** Which of {@code withers} {@code invocation} is a link of, by name and argument count; -1 for none. */
     private static int witherOf(List<? extends Wither<?>> withers, MethodInvocation invocation) {
         String name = invocation.getName().getIdentifier();
-        int arguments = invocation.arguments().size();
         for (int i = 0; i < withers.size(); i++) {
             Wither<?> wither = withers.get(i);
-            if (wither.method().getName().equals(name) && arguments == (wither.flag() ? 0 : 1)) return i;
+            if (wither.method().getName().equals(name) && takes(wither, invocation)) return i;
         }
         return -1;
+    }
+
+    /** Whether {@code wither} is written with as many arguments as {@code invocation}: a spread one with any, one up. */
+    private static boolean takes(Wither<?> wither, MethodInvocation invocation) {
+        int arguments = invocation.arguments().size();
+        if (wither.flag()) return arguments == 0;
+        return wither.spread() ? arguments >= 1 : arguments == 1;
+    }
+
+    /** {@code link}'s part as {@code wither} holds it: its one argument, or every argument of a spread link as a list. */
+    private Optional<Object> linkPart(Wither<?> wither, SourceNode node, MethodInvocation link) {
+        if (!wither.spread()) return readPart(wither.partType(), node.child(arguments(link).getFirst()));
+        List<Object> elements = new ArrayList<>();
+        for (Expression argument : arguments(link)) {
+            Optional<Object> element = readPart(wither.elementType(), node.child(argument));
+            if (element.isEmpty()) return Optional.empty();
+            elements.add(element.get());
+        }
+        return Optional.of(Collections.unmodifiableList(elements));
+    }
+
+    /** Whether {@code read} is a part kept as its source, for a wither that holds no text: some element of it, if spread. */
+    private static boolean asSource(Wither<?> wither, Object read) {
+        if (!wither.spread()) return read instanceof String && !wither.partType().isAssignableFrom(String.class);
+        return !wither.elementType().isAssignableFrom(String.class) && read instanceof List<?> elements
+                && elements.stream().anyMatch(String.class::isInstance);
     }
 
     /** {@code node} read as a call of {@code call}'s own factory, and nothing else. */
@@ -389,6 +476,16 @@ final class ExpressionReader {
     private static boolean assignable(Class<?> expected, Call call) {
         Class<?> built = ValueGrammar.classOf(call.component());
         return built != null && (expected == null || boxed(expected).isAssignableFrom(built));
+    }
+
+    /** Whether {@code type} is an interface or an abstract class some declared call builds a kind of. */
+    private boolean builtAsKind(Class<?> type) {
+        if (!type.isInterface() && !Modifier.isAbstract(type.getModifiers())) return false;
+        for (Call call : calls) {
+            Class<?> built = ValueGrammar.classOf(call.component());
+            if (built != null && built != type && type.isAssignableFrom(built)) return true;
+        }
+        return false;
     }
 
     private boolean isHostContainer(Class<?> type) {
