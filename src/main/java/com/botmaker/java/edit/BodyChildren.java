@@ -57,7 +57,8 @@ public final class BodyChildren {
         return lines.get(childIndex - 1) instanceof Comment comment ? comment : null;
     }
 
-    private static List<ASTNode> lines(Block body) {
+    /** {@code body}'s lines, its statements and the comments between them, in source order. */
+    static List<ASTNode> lines(Block body) {
         List<ASTNode> lines = new ArrayList<>();
         for (Object statement : body.statements()) lines.add((ASTNode) statement);
         if (body.getRoot() instanceof CompilationUnit unit) lines.addAll(commentsOf(body, nonJavadoc(unit)));

@@ -9,6 +9,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- `edit.BodyInserts.insert` puts a statement on a body's line after a comment through the rewrite's own list
+  (2026-11-09). A `TargetSourceRangeComputer` stretches the statement above to the comment's end and starts the one
+  below at its own first character. A body of only comments is replaced by those comments and the statement, and a
+  comment whose statement above moves past it is written back before the statement, each comment as its own source.
+
+### Removed
+
+- `AstRewriteHelper.applyRewriteAndInsertAt` (2026-11-09): nothing inserts Java as text at an offset any more.
+
 - The grammar reads and writes what a plan is made of (2026-11-06). A varargs link reads its arguments into one list
   part and writes each back. A `Supplier` part reads `() -> expr` as the value it gives, read when asked, and writes
   back as the same lambda. An interface or abstract class with no canonical shape, such as `Goal` or `Retry`, reads by
