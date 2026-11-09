@@ -18,6 +18,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   below at its own first character. A body of only comments is replaced by those comments and the statement, and a
   comment whose statement above moves past it is written back before the statement, each comment as its own source.
 
+### Changed
+
+- `SourceNode.parse` keeps the last 2048 texts it parsed, so a value read again from the same text is not parsed again
+  (2026-11-09). A new JDT parser per value was most of the time a 68-screen map read held Studio's FX thread.
+- `BotIndex.over` stamps each classpath jar with one stat instead of two (2026-11-09).
+
 ### Removed
 
 - `AstRewriteHelper.applyRewriteAndInsertAt` (2026-11-09): nothing inserts Java as text at an offset any more.

@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -121,14 +122,16 @@ public final class BotIndex {
     /**
      * Each jar's size and time. A {@code -SNAPSHOT} rebuilt in place keeps its path, so the paths alone would
      * answer the index parsed against the old bytes, and a dev reload that broke the bot would show nothing broken
-     * (2026-10-16).
+     * (2026-10-16). One stat each (2026-11-09): a map read asks for its values one by one, and two per jar for each
+     * was a third of what it cost.
      */
     private static List<String> stamps(List<String> classpath) {
         List<String> out = new ArrayList<>(classpath.size());
         for (String entry : classpath) {
             Path jar = Path.of(entry);
             try {
-                out.add(Files.size(jar) + ":" + Files.getLastModifiedTime(jar).toMillis());
+                BasicFileAttributes attributes = Files.readAttributes(jar, BasicFileAttributes.class);
+                out.add(attributes.size() + ":" + attributes.lastModifiedTime().toMillis());
             } catch (IOException | RuntimeException e) {
                 out.add("");
             }
