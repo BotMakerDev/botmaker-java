@@ -9,6 +9,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- `edit.helpers.BotEntry.of(source)` reads, from a parse, the package and the top-level class that holds the bot's
+  `main` (2026-11-09). A comment or a string naming `main` is no entry. When a file does not parse, its tokens decide,
+  and a file too broken to keep its type has an entry with no class name (`named()` is false). The core's
+  `ProjectConfig` and the cli's `.bmk` reader both use it.
 - `edit.BodyInserts.insert` puts a statement on a body's line after a comment through the rewrite's own list
   (2026-11-09). A `TargetSourceRangeComputer` stretches the statement above to the comment's end and starts the one
   below at its own first character. A body of only comments is replaced by those comments and the statement, and a

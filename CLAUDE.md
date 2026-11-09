@@ -47,4 +47,4 @@ no state, no files and no UI: a caller passes text or trees and gets text or tre
 - Imports nothing above it: no `javafx`, Studio, core, plugin-host, SDK or cli (`JavaLayersTest`).
 - `botmaker-studio-api` stays `provided`: a contract class must be one `Class` object across the plugin boundary.
 - JDT is a plain dependency, and this pom is the only one that names its version. A host that must not download it,
-  such as plugin-host and the cli's main jar, declares this module `optional`.
+  such as plugin-host, declares this module `optional`; the cli's main jar needs it since 2026-11-09 (`BotEntry`).
