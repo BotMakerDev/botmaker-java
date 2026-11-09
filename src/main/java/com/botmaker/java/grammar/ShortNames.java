@@ -26,11 +26,11 @@ import java.util.function.Predicate;
 /**
  * A value's classes written by their simple names, each with its import (2026-10-13).
  *
- * <p>A part a plugin hands over as the Java it is written as — a flow card's body, {@code Research::body} — is
+ * <p>A part a plugin hands over as the Java it is written as — a method reference, {@code Research::body} — is
  * kept as written ({@link JavaValue#kept}) and needs no import in the file it came from. Written into another
- * file it may: {@code Flows.java} sits in {@code plugins/sdk}, the body's class in the bot's own package, and the
- * bot stopped compiling. And a part spelled in full so that it needs none, {@code
- * com.botmaker.sdk.api.flow.ActivityBody.none()}, is the full name the bot's author should not have to read.
+ * file it may: the plugin's values sit in {@code plugins/sdk}, the method's class in the bot's own package, and
+ * the bot stopped compiling. And a part spelled in full so that it needs none, {@code
+ * com.botmaker.sdk.api.plan.Plan.NONE}, is the full name the bot's author should not have to read.
  */
 public final class ShortNames {
 

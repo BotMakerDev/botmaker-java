@@ -35,7 +35,7 @@ public final class ExpressionCatalog {
 
     // --- References ---
     public static final ExpressionType VARIABLE = new Reference("VARIABLE", "Variable", REFERENCE, Reference.Kind.VARIABLE);
-    public static final ExpressionType ACTIVITY = new Reference("ACTIVITY", "Activity", REFERENCE, Reference.Kind.ACTIVITY);
+    public static final ExpressionType PARAMETER = new Reference("PARAMETER", "Parameter", REFERENCE, Reference.Kind.PARAMETER);
     public static final ExpressionType FUNCTION_CALL = new Reference("FUNCTION_CALL", "Function Call", REFERENCE, Reference.Kind.FUNCTION_CALL);
     public static final ExpressionType ENUM_CONSTANT = new Reference("ENUM_CONSTANT", "Enum Value", LITERAL, Reference.Kind.ENUM_CONSTANT);
     public static final ExpressionType LIST = new Reference("LIST", "Sub-List", STRUCTURE, Reference.Kind.SUB_LIST);
@@ -73,7 +73,7 @@ public final class ExpressionCatalog {
 
     private static final List<ExpressionType> ALL = List.of(
             TEXT, NUMBER, TRUE, FALSE, CHARACTER, CLASS_LITERAL,
-            VARIABLE, ACTIVITY, FUNCTION_CALL, ENUM_CONSTANT, LIST, INSTANTIATION, NEW_ARRAY, CAST, LAMBDA,
+            VARIABLE, PARAMETER, FUNCTION_CALL, ENUM_CONSTANT, LIST, INSTANTIATION, NEW_ARRAY, CAST, LAMBDA,
             ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO, NEGATE,
             EQUALS, NOT_EQUALS, GREATER, LESS, GREATER_EQUALS, LESS_EQUALS, INSTANCEOF,
             AND, OR, NOT, CHOOSE);
@@ -115,7 +115,7 @@ public final class ExpressionCatalog {
                     ResolvedType checkType = targetType.isArray() ? targetType.leafType() : targetType;
                     yield !checkType.isPrimitive() && !checkType.isString() && !checkType.isEnum();
                 }
-                case VARIABLE, ACTIVITY, FUNCTION_CALL -> true;
+                case VARIABLE, PARAMETER, FUNCTION_CALL -> true;
             };
         }
 

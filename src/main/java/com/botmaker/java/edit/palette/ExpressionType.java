@@ -40,7 +40,7 @@ public sealed interface ExpressionType
             };
             case Reference r -> switch (r.kind()) {
                 case VARIABLE -> "𝑥";
-                case ACTIVITY -> "◆";
+                case PARAMETER -> "◆";
                 case FUNCTION_CALL -> "ƒ";
                 case ENUM_CONSTANT -> "◈";
                 case SUB_LIST -> "☰";
@@ -90,7 +90,7 @@ public sealed interface ExpressionType
 
     /** A reference-shaped expression: variable, activity, function call, enum constant, sub-list, or instantiation. */
     record Reference(String id, String displayName, ExpressionCategory category, Kind kind) implements ExpressionType {
-        public enum Kind { VARIABLE, ACTIVITY, FUNCTION_CALL, ENUM_CONSTANT, SUB_LIST, INSTANTIATION }
+        public enum Kind { VARIABLE, PARAMETER, FUNCTION_CALL, ENUM_CONSTANT, SUB_LIST, INSTANTIATION }
         @Override public boolean isConstant() { return kind == Kind.ENUM_CONSTANT; }
     }
 

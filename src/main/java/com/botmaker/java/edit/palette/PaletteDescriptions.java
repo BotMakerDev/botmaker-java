@@ -50,7 +50,7 @@ public final class PaletteDescriptions {
             Map.entry("CHARACTER", "One character, like 'a'."),
             Map.entry("CLASS_LITERAL", "A class itself, like String.class."),
             Map.entry("VARIABLE", "A variable you can read here."),
-            Map.entry("ACTIVITY", "A parameter from the Parameters window."),
+            Map.entry("PARAMETER", "A parameter from the Parameters window."),
             Map.entry("FUNCTION_CALL", "The value a function gives back."),
             Map.entry("ENUM_CONSTANT", "One of an enum's choices."),
             Map.entry("LIST", "A nested list of values, inside another list."),

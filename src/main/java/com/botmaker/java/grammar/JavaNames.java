@@ -34,8 +34,8 @@ public final class JavaNames {
             "double", "java.lang.Double");
 
     /**
-     * {@code type}'s canonical name — {@code com.botmaker.sdk.api.flow.Flow.Activity} for a nested class,
-     * where {@link Class#getName()} would say {@code Flow$Activity}. The binary name for a class that has no
+     * {@code type}'s canonical name — {@code com.botmaker.sdk.api.plan.Plan.Tier} for a nested class,
+     * where {@link Class#getName()} would say {@code Plan$Tier}. The binary name for a class that has no
      * canonical one (a local or anonymous class), which nothing writes and so nothing matches.
      */
     public static String canonical(Class<?> type) {
@@ -44,7 +44,7 @@ public final class JavaNames {
         return canonical != null ? canonical : type.getName();
     }
 
-    /** {@code Flow.Activity} for {@code com.botmaker.sdk.api.flow.Flow.Activity}: the name past the package. */
+    /** {@code Plan.Tier} for {@code com.botmaker.sdk.api.plan.Plan.Tier}: the name past the package. */
     public static String simple(Class<?> type) {
         String canonical = canonical(type);
         String pkg = type == null ? "" : type.getPackageName();
@@ -53,7 +53,7 @@ public final class JavaNames {
 
     /**
      * The class a file imports to write {@code type} by its simple name — the outermost class, since
-     * importing it makes {@code Flow.Activity} writable — or {@code ""} for a primitive or anything in
+     * importing it makes {@code Plan.Tier} writable — or {@code ""} for a primitive or anything in
      * {@code java.lang}, which needs none.
      */
     public static String importName(Class<?> type) {

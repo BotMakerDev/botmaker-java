@@ -33,9 +33,9 @@ public class ExpressionFactory {
                     yield mi;
                 }
                 case VARIABLE -> ast.newSimpleName(DefaultNames.DEFAULT_VARIABLE);
-                // ACTIVITY is only ever inserted as a concrete Activities.<name> field reference (via
-                // ExpressionChoice.Field), never created blank from the palette; placeholder for exhaustiveness.
-                case ACTIVITY -> ast.newSimpleName(DefaultNames.DEFAULT_VARIABLE);
+                // PARAMETER is only ever inserted as a concrete call of a parameter's method (the Parameters
+                // submenu), never created blank from the palette; placeholder for exhaustiveness.
+                case PARAMETER -> ast.newSimpleName(DefaultNames.DEFAULT_VARIABLE);
                 case SUB_LIST -> ast.newArrayInitializer();
                 case ENUM_CONSTANT -> createEnumConstantExpression(ast, contextType);
                 case INSTANTIATION -> createInstantiation(ctx, contextType);
