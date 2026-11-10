@@ -5,7 +5,7 @@ All notable changes to `botmaker-java`.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this module uses
 [semantic versioning](https://semver.org/). `release.sh` refuses to cut a version with no section here.
 
-## [Unreleased]
+## [0.2.0] — 2026-11-10
 
 No source changes since v0.1.0; re-released for updated upstream pins.
 
@@ -25,6 +25,7 @@ No source changes since v0.1.0; re-released for updated upstream pins.
 - `SourceNode.parse` keeps the last 2048 texts it parsed, so a value read again from the same text is not parsed again
   (2026-11-09). A new JDT parser per value was most of the time a 68-screen map read held Studio's FX thread.
 - `BotIndex.over` stamps each classpath jar with one stat instead of two (2026-11-09).
+- Built against botmaker-studio-api 0.17.0 (was 0.16.0).
 
 ### Removed
 
