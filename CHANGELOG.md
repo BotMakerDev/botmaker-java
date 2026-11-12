@@ -5,6 +5,13 @@ All notable changes to `botmaker-java`.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this module uses
 [semantic versioning](https://semver.org/). `release.sh` refuses to cut a version with no section here.
 
+## [Unreleased]
+
+### Added
+
+- `index.BotIndex.uncached(sources, classpath, root)`: classes that are not the open bot (a plugin's folder of this PC)
+  parsed with bindings, neither answered from nor put in the cache, so the bot's own index stays cached.
+
 ## [0.2.0] — 2026-11-10
 
 No source changes since v0.1.0; re-released for updated upstream pins.

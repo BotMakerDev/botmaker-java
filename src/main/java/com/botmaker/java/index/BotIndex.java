@@ -106,6 +106,14 @@ public final class BotIndex {
         return index;
     }
 
+    /**
+     * {@code sources} parsed as one set of classes that is not the open bot (a plugin's folder of this PC): not
+     * answered from the cache and not put in it, so the bot's own index stays cached.
+     */
+    public static BotIndex uncached(Map<Path, String> sources, List<String> classpath, Path root) {
+        return build(JavaLevel.LATEST, sources, classpath, root);
+    }
+
     private static BotIndex build(JavaLevel level, Map<Path, String> sources, List<String> classpath, Path root) {
         return build(level, sources, classpath, root, stamps(classpath == null ? List.of() : classpath));
     }
