@@ -191,7 +191,7 @@ public final class ParamsFitter {
         return mine == null ? theirs == null : mine.subtreeMatch(new ASTMatcher(), theirs);
     }
 
-    /** Whether {@code unit} declares a top-level class marked {@code @Param}: a parameter group. */
+    /** Whether {@code unit} declares a top-level class marked {@code @Param} or {@code @Pools}: a group. */
     public static boolean isGroup(CompilationUnit unit) {
         for (Object each : unit.types()) {
             if (each instanceof TypeDeclaration type && isGroupType(type)) return true;
@@ -274,9 +274,12 @@ public final class ParamsFitter {
                 && SourceNames.refersTo(simple.getName(), SourceNames.canonicalOf(group));
     }
 
-    /** Whether {@code type} is a parameter group: a class marked with the contract's {@code @Param}. */
+    /**
+     * Whether {@code type} is a group of {@code params/}: a class marked with the contract's {@code @Param}, or with its
+     * {@code @Pools} (2026-11-15), whose methods are fitted alike, each pool a value of this computer.
+     */
     private static boolean isGroupType(TypeDeclaration type) {
-        return !type.isInterface() && BotAnnotation.PARAM.on(type) != null;
+        return !type.isInterface() && (BotAnnotation.PARAM.on(type) != null || BotAnnotation.POOLS.on(type) != null);
     }
 
     /**

@@ -221,6 +221,35 @@ class ParamsFitterTest {
         assertEquals(MINE, Files.readString(params.resolve(FILE)));
     }
 
+    /** A {@code @Pools} group is fitted as a {@code @Param} one: its pools are this computer's values (2026-11-15). */
+    @Test
+    void aPoolsGroupIsFittedLikeAParamGroup() {
+        String starting = """
+                package com.refbot.params.bot;
+
+                import com.botmaker.plugin.api.params.Pool;
+                import com.botmaker.plugin.api.params.Pools;
+
+                @Pools
+                public final class FarmPools {
+                    public Pool<String> accounts() { return Pool.of("main").fills(RunChoices::account); }
+                }
+                """;
+        String mine = starting.replace("Pool.of(\"main\")", "Pool.of(\"main\", \"alt\")");
+        Path pools = Path.of("bot", "FarmPools.java");
+
+        assertEquals(List.of(), ParamsFitter.over(LATEST, Map.of(pools, mine), Map.of(pools, starting)),
+                "a pool of this computer's is kept");
+        List<ParamsFitter.Fitted> gone = ParamsFitter.over(LATEST, Map.of(pools, mine, FILE, MINE), Map.of(FILE, MINE));
+        assertEquals(List.of(pools), gone.stream().map(ParamsFitter.Fitted::file).toList(),
+                "a group whose starting copy is gone is deleted");
+        String added = starting.replace("    public Pool<String> accounts()",
+                "    public Pool<String> more() { return Pool.of(\"x\").fills(RunChoices::account); }\n"
+                        + "    public Pool<String> accounts()");
+        assertTrue(ParamsFitter.fit(LATEST, added, mine).contains("Pool.of(\"main\", \"alt\")"));
+        assertTrue(ParamsFitter.fit(LATEST, added, mine).contains("more()"), "a pool the starting copy adds");
+    }
+
     /** The rewrite lays out a body it copies: these tests read what is written, not how it is spaced. */
     private static String flat(String source) {
         return source.replaceAll("\\s+", " ");

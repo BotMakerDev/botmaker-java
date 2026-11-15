@@ -5,6 +5,17 @@ All notable changes to `botmaker-java`.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this module uses
 [semantic versioning](https://semver.org/). `release.sh` refuses to cut a version with no section here.
 
+## [Unreleased]
+
+### Added
+
+- **Pools read off a bot's source** (2026-11-15, spec `2026-11-15-run-claims-design.md` §1): `index.PoolReader` reads
+  each pool of a `@Pools` group from its bound tree, with the rules of the contract's `Pool`. It reads the elements as
+  the grammar writes them, with their imports; `all(X.class)` reads every constant of an enum or open set, and a
+  constant that names another of the set is the same element. It also reads `take`, `each` and `rotate`, and
+  resolves `fills` to the parameter's owner, method, descriptor and type. A pool that doesn't read says why and has no
+  elements. `BotAnnotation.POOLS` was added, and `ParamsFitter` fits a `@Pools` group as it fits a `@Param` one.
+
 ## [0.2.1] — 2026-11-13
 
 ### Added

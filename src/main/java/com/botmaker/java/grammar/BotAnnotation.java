@@ -4,6 +4,7 @@ import com.botmaker.plugin.api.meta.Migrate;
 import com.botmaker.plugin.api.meta.Migrated;
 import com.botmaker.plugin.api.meta.Refactor;
 import com.botmaker.plugin.api.params.Param;
+import com.botmaker.plugin.api.params.Pools;
 import org.eclipse.jdt.core.dom.Annotation;
 import org.eclipse.jdt.core.dom.ArrayInitializer;
 import org.eclipse.jdt.core.dom.BodyDeclaration;
@@ -57,6 +58,8 @@ public enum BotAnnotation {
     PARAM_SHOWN(Param.Shown.class),
     /** When a run last wrote a parameter's value, on its method in {@code params/} (2026-11-04). */
     PARAM_KEPT(Param.Kept.class),
+    /** A group of pools, beside the {@code @Param} groups in {@code params/}: several runs dealt (2026-11-15). */
+    POOLS(Pools.class),
     /** A refactor that guessed, on a bot's function (2026-09-27). No earlier name: it began in the contract. */
     REFACTOR(Refactor.class),
     /** The author's mapping from one type's values to another's, on a bot's method (2026-10-12). */

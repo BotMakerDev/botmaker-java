@@ -24,7 +24,8 @@ no state, no files and no UI: a caller passes text or trees and gets text or tre
   bot's tree is built at `LATEST` and copied by `JavaLevel.copy`, never `ASTNode.copySubtree`, which throws across levels; code the bot's level cannot hold throws `JavaLevel.TooOld`.
 - `types`: `ResolvedType` and its kin, `ProjectAnalyzer` (a project's and its libraries' types, over a `SourceSet` and
   an `index.LibraryIndex`), `MethodSignature`.
-- `index`: `LibraryIndex`, the libraries' types a caller indexes, and `LibraryType`; `BotIndex`, the whole bot parsed
+- `index`: `LibraryIndex`, the libraries' types a caller indexes, and `LibraryType`; `PoolReader`, a `@Pools` group's
+  pools read off its bound tree (2026-11-15); `BotIndex`, the whole bot parsed
   in one batch with bindings, cached by content, over sources the caller hands in; `nav`, where a binding is used
   (`Usages`, `Uses`, `StructureKind`), the renames and deletes planned from that (`Refactor`, `TypeRename`,
   `TypeDelete`) and `TextSearch`. `BotIndex` keeps one cached index and stamps the classpath's jars, and
