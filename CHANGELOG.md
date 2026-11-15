@@ -9,6 +9,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- **`grammar.MarkedReturns`** (2026-11-15): reads and rewrites the expression a marked method returns, found by its
+  marker and constant (`@SdkRunValue(SdkRunValue.Id.DONE)`), for a run's values of this PC.
+
 - **Pools read off a bot's source** (2026-11-15, spec `2026-11-15-run-claims-design.md` §1): `index.PoolReader` reads
   each pool of a `@Pools` group from its bound tree, with the rules of the contract's `Pool`. It reads the elements as
   the grammar writes them, with their imports; `all(X.class)` reads every constant of an enum or open set, and a

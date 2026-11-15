@@ -160,7 +160,7 @@ public final class ParamValues {
     }
 
     /** What the one {@code return} of {@code method} returns. */
-    private static Optional<Expression> returned(MethodDeclaration method) {
+    static Optional<Expression> returned(MethodDeclaration method) {
         Block body = method.getBody();
         if (body == null || body.statements().size() != 1) return Optional.empty();
         return body.statements().getFirst() instanceof ReturnStatement ret
