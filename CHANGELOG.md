@@ -5,7 +5,7 @@ All notable changes to `botmaker-java`.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this module uses
 [semantic versioning](https://semver.org/). `release.sh` refuses to cut a version with no section here.
 
-## [Unreleased]
+## [0.3.0] — 2026-11-16
 
 ### Added
 
@@ -18,6 +18,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   constant that names another of the set is the same element. It also reads `take`, `each` and `rotate`, and
   resolves `fills` to the parameter's owner, method, descriptor and type. A pool that doesn't read says why and has no
   elements. `BotAnnotation.POOLS` was added, and `ParamsFitter` fits a `@Pools` group as it fits a `@Param` one.
+
+### Changed
+
+- Built against botmaker-studio-api 0.18.0 (was 0.17.1).
 
 ## [0.2.1] — 2026-11-13
 
