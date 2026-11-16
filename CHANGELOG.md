@@ -28,6 +28,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- **`PoolReader` reads a pool that lists nothing yet** (2026-11-16): `Pool.<Hero>of()`, a starting copy's pool,
+  reads and deals nothing; `take(k)` is checked against what is listed only when something is.
 - Built against botmaker-studio-api 0.17.1 (was 0.17.0).
 
 ## [0.2.0] — 2026-11-10

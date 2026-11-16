@@ -260,7 +260,7 @@ public final class PoolReader {
                 if (all == null || all.isRecovered()) throw new Unread(said(literal) + " is no class of this bot's classpath");
                 return;
             }
-            if (root.arguments().isEmpty()) throw new Unread("lists no element: a pool lists at least one");
+            // Pool.<Hero>of() lists nothing yet: a starting copy's pool, which deals nothing until this PC lists some.
             IMethodBinding of = root.resolveMethodBinding();
             if (root.arguments().size() == 1 && of != null && of.isVarargs()
                     && ((Expression) root.arguments().getFirst()).resolveTypeBinding() instanceof ITypeBinding array
@@ -281,7 +281,7 @@ public final class PoolReader {
                     if (take > 0) throw new Unread("takes twice: a pool takes once");
                     if (fills != null) throw new Unread("takes after fills: take(k) comes before fills");
                     take = count(step, "take");
-                    if (all == null && take > listed.size()) {
+                    if (all == null && !listed.isEmpty() && take > listed.size()) {
                         throw new Unread("takes " + take + " of " + listed.size() + " elements");
                     }
                 }
