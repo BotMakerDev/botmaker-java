@@ -28,7 +28,7 @@ project:
     source, before a compile or during a run, does it the same way. A library with no state, files or UI.
   authors:
     - LiQiyeDev
-  license: CC0-1.0
+  license: PolyForm-Noncommercial-1.0.0
   copyright: LiQiyeDev
   inceptionYear: '2026'
   links:
