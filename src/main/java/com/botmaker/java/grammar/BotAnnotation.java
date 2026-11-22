@@ -119,7 +119,7 @@ public enum BotAnnotation {
      *
      * <p>From the binding where there is one, so {@code category = SOME_CONSTANT} reads as the constant's
      * value. Without one, only what the source spells as a constant: a string or number literal, and a
-     * constant this annotation itself declares ({@code Param.PUBLIC}), read off the contract's class.
+     * constant this annotation itself declares ({@code Marker.SOME_CONSTANT}), read off the annotation's class.
      */
     public Map<String, Object> members(Annotation annotation) {
         IAnnotationBinding binding = annotation.resolveAnnotationBinding();
@@ -169,7 +169,7 @@ public enum BotAnnotation {
             case QualifiedName qualified when names.stream()
                     .anyMatch(name -> SourceNames.refersTo(qualified.getQualifier(), name)) ->
                     ownConstant(type, qualified.getName().getIdentifier());
-            // A nested annotation spells its outer one's constants: @Param.Shown(visibility = Param.PUBLIC).
+            // A nested annotation spells its outer one's constants: @Outer.Inner(member = Outer.SOME_CONSTANT).
             case QualifiedName qualified when type.getDeclaringClass() != null
                     && SourceNames.refersTo(qualified.getQualifier(), type.getDeclaringClass().getCanonicalName()) ->
                     ownConstant(type.getDeclaringClass(), qualified.getName().getIdentifier());
